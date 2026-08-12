@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>SAMS - Upload</title>
+		<link
+			rel="stylesheet"
+			href="{{ url_for('static', filename='style.css') }}"
+		/>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Student Attendance Management System</h1>
+			<p>
+				Upload the signing sheet image and the student info.xml to process
+				attendance.
+			</p>
+
+			<form
+				action="/upload"
+				method="POST"
+				enctype="multipart/form-data"
+				class="upload-form"
+			>
+				<div class="form-group">
+					<label for="image">Signing Sheet Image (.png, .jpg):</label>
+					<input
+						type="file"
+						name="image"
+						id="image"
+						accept="image/*"
+						required
+					/>
+				</div>
+
+				<div class="form-group">
+					<label for="xml">Student Data (.xml):</label>
+					<input type="file" name="xml" id="xml" accept=".xml" required />
+				</div>
+
+				<button type="submit" class="btn">Process Attendance</button>
+			</form>
+		</div>
+	</body>
+</html>

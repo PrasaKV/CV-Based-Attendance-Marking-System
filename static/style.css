@@ -1,0 +1,139 @@
+:root {
+	--primary-color: #2c3e50;
+	--secondary-color: #3498db;
+	--present-color: #27ae60;
+	--absent-color: #c0392b;
+	--bg-color: #f5f6fa;
+}
+
+body {
+	font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+	background-color: var(--bg-color);
+	margin: 0;
+	padding: 20px;
+	color: var(--primary-color);
+}
+
+.container {
+	max-width: 600px;
+	margin: 0 auto;
+	background: white;
+	padding: 30px;
+	border-radius: 8px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.container.wide {
+	/* Made slightly wider to comfortably fit 3 images side-by-side */
+	max-width: 1400px;
+}
+
+h1,
+h2,
+h3 {
+	text-align: center;
+}
+
+.form-group {
+	margin-bottom: 20px;
+}
+
+.form-group label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: bold;
+}
+
+.btn {
+	display: block;
+	width: 100%;
+	padding: 12px;
+	background-color: var(--secondary-color);
+	color: white;
+	border: none;
+	border-radius: 4px;
+	font-size: 16px;
+	cursor: pointer;
+	text-align: center;
+	text-decoration: none;
+}
+
+.btn:hover {
+	background-color: #2980b9;
+}
+
+.btn.secondary {
+	background-color: #95a5a6;
+	width: auto;
+	display: inline-block;
+	margin-bottom: 10px;
+}
+
+/* --- Table Styling --- */
+.table-section {
+	margin-bottom: 40px;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 10px;
+}
+
+th,
+td {
+	padding: 12px;
+	text-align: left;
+	border-bottom: 1px solid #ddd;
+}
+
+th {
+	background-color: var(--primary-color);
+	color: white;
+}
+
+.status-present {
+	color: var(--present-color);
+	font-weight: bold;
+}
+.status-absent {
+	color: var(--absent-color);
+	font-weight: bold;
+}
+
+/* --- Horizontal Image Gallery Styling --- */
+.image-section {
+	border-top: 2px solid #eee;
+	padding-top: 20px;
+}
+
+.image-gallery {
+	display: grid;
+	grid-template-columns: repeat(
+		3,
+		1fr
+	); /* Creates 3 equal horizontal columns */
+	gap: 20px;
+}
+
+.image-card {
+	text-align: center;
+	background: #f8f9fa;
+	padding: 15px;
+	border-radius: 6px;
+	border: 1px solid #ddd;
+}
+
+.image-card h3 {
+	margin-top: 0;
+	font-size: 18px;
+	color: #2c3e50;
+}
+
+.image-card img {
+	width: 100%;
+	height: auto;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
