@@ -8,12 +8,20 @@ app = Flask(__name__)
 
 UPLOAD_FOLDER = "static/uploads"
 
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+ALLOWED_XML_EXTENSIONS = {".xml"}
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(
     app.config["UPLOAD_FOLDER"],
     exist_ok=True
 )
+
+
+def is_allowed_file(filename, allowed_extensions):
+    extension = os.path.splitext(filename)[1].lower()
+    return extension in allowed_extensions
 
 
 @app.route("/")
@@ -24,13 +32,25 @@ def index():
 @app.route("/upload", methods=["POST"])
 def upload():
     if "image" not in request.files or "xml" not in request.files:
-        return "Missing files", 400
+        return "Missing files. Please upload both an image and an XML file.", 400
 
     image_file = request.files["image"]
     xml_file = request.files["xml"]
 
     if image_file.filename == "" or xml_file.filename == "":
-        return "No selected files", 400
+        return "No selected files. Please choose both files.", 400
+
+    if not is_allowed_file(
+        image_file.filename,
+        ALLOWED_IMAGE_EXTENSIONS
+    ):
+        return "Invalid image format. Please upload a PNG or JPG image.", 400
+
+    if not is_allowed_file(
+        xml_file.filename,
+        ALLOWED_XML_EXTENSIONS
+    ):
+        return "Invalid XML file. Please upload an XML file.", 400
 
     image_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
