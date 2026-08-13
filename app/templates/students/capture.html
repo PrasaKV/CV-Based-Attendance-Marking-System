@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Capture Faces - SAMS{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <h1>Capture Face Samples — {{ student.name }}</h1>
+    <p class="page-description">
+      Captured so far: <span id="sample-count">{{ student.sample_count }}</span>.
+      Aim for at least 10-15 samples from a few different angles and expressions.
+    </p>
+  </header>
+
+  <div class="webcam-box">
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas" style="display: none"></canvas>
+  </div>
+
+  <div class="capture-controls">
+    <button type="button" id="start-camera" class="btn">Start Camera</button>
+    <button type="button" id="capture-btn" class="btn secondary" disabled>
+      Capture Sample
+    </button>
+  </div>
+
+  <p id="capture-status" class="page-description"></p>
+
+  <hr />
+
+  <form
+    method="POST"
+    action="{{ url_for('students.capture_submit', student_id=student.id) }}"
+    enctype="multipart/form-data"
+    class="upload-form"
+  >
+    <div class="form-group">
+      <label for="image">No camera? Upload a photo instead</label>
+      <input type="file" id="image" name="image" accept="image/*" required />
+    </div>
+    <button type="submit" class="btn secondary">Upload Sample</button>
+  </form>
+
+  <a class="btn" href="{{ url_for('students.list_students') }}">Done</a>
+
+  <script src="{{ url_for('static', filename='js/webcam.js') }}"></script>
+  <script>
+    const video = document.getElementById("webcam");
+    const canvas = document.getElementById("canvas");
+    const startBtn = document.getElementById("start-camera");
+    const captureBtn = document.getElementById("capture-btn");
+    const counterEl = document.getElementById("sample-count");
+    const statusEl = document.getElementById("capture-status");
+    const captureUrl = "{{ url_for('students.capture_submit', student_id=student.id) }}";
+
+    startBtn.addEventListener("click", async () => {
+      try {
+        await startWebcam(video);
+        captureBtn.disabled = false;
+        startBtn.disabled = true;
+      } catch (err) {
+        statusEl.textContent = "Could not access camera: " + err.message;
+      }
+    });
+
+    captureBtn.addEventListener("click", async () => {
+      const dataUrl = captureFrame(video, canvas);
+
+      const response = await fetch(captureUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+
+      const payload = await response.json();
+
+      if (payload.ok) {
+        counterEl.textContent = payload.sample_count;
+        statusEl.textContent = "Sample saved.";
+      } else {
+        statusEl.textContent = payload.error || "Failed to save sample.";
+      }
+    });
+  </script>
+{% endblock %}

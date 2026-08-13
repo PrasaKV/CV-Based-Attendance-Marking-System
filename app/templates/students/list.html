@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Students - SAMS{% endblock %}
+
+{% block content %}
+  <header class="page-header list-header">
+    <h1>Students</h1>
+    <a class="btn" href="{{ url_for('students.add_student') }}">+ Add Student</a>
+  </header>
+
+  {% if not model_exists %}
+    <p class="flash flash-error">
+      No recognizer has been trained yet. Capture face samples for each student, then train.
+    </p>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('students.train') }}" class="inline-form">
+    <button type="submit" class="btn secondary">Train Recognizer</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Roll No</th>
+        <th>Name</th>
+        <th>Samples</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for student in students %}
+        <tr>
+          <td>{{ student.roll_no }}</td>
+          <td>{{ student.name }}</td>
+          <td>{{ student.sample_count }}</td>
+          <td class="actions-cell">
+            <a href="{{ url_for('students.capture', student_id=student.id) }}">Add Samples</a>
+            <form
+              method="POST"
+              action="{{ url_for('students.delete_student', student_id=student.id) }}"
+              class="inline-form"
+              onsubmit="return confirm('Remove {{ student.name }}?');"
+            >
+              <button type="submit" class="link-btn">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4">No students enrolled yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Take Attendance - SAMS{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <h1>Take Attendance</h1>
+    <p class="page-description">
+      Upload a group photo or capture one with your webcam.
+    </p>
+  </header>
+
+  <form
+    method="POST"
+    action="{{ url_for('attendance.take_submit') }}"
+    enctype="multipart/form-data"
+    class="upload-form"
+  >
+    <div class="form-group">
+      <label for="date">Date</label>
+      <input type="date" id="date" name="date" value="{{ today }}" />
+    </div>
+
+    <div class="form-group">
+      <label for="image">Upload a group photo</label>
+      <input type="file" id="image" name="image" accept="image/*" />
+    </div>
+
+    <p class="or-divider">— or use your webcam —</p>
+
+    <div class="webcam-box">
+      <video id="webcam" autoplay playsinline></video>
+      <img id="preview" alt="Captured photo" style="display: none" />
+      <canvas id="canvas" style="display: none"></canvas>
+    </div>
+
+    <div class="capture-controls">
+      <button type="button" id="start-camera" class="btn secondary">Start Camera</button>
+      <button type="button" id="snap-btn" class="btn secondary" disabled>Capture Photo</button>
+    </div>
+
+    <input type="hidden" name="captured_image" id="captured_image" />
+
+    <button type="submit" class="btn">Process Attendance</button>
+  </form>
+
+  <script src="{{ url_for('static', filename='js/webcam.js') }}"></script>
+  <script>
+    const video = document.getElementById("webcam");
+    const canvas = document.getElementById("canvas");
+    const preview = document.getElementById("preview");
+    const startBtn = document.getElementById("start-camera");
+    const snapBtn = document.getElementById("snap-btn");
+    const hiddenInput = document.getElementById("captured_image");
+
+    startBtn.addEventListener("click", async () => {
+      try {
+        await startWebcam(video);
+        snapBtn.disabled = false;
+        startBtn.disabled = true;
+      } catch (err) {
+        alert("Could not access camera: " + err.message);
+      }
+    });
+
+    snapBtn.addEventListener("click", () => {
+      const dataUrl = captureFrame(video, canvas);
+      hiddenInput.value = dataUrl;
+      preview.src = dataUrl;
+      preview.style.display = "block";
+      video.style.display = "none";
+    });
+  </script>
+{% endblock %}

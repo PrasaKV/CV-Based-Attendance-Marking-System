@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SAMS{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <h1>Student Attendance Management System</h1>
+    <p class="page-description">
+      Face-recognition based attendance tracking.
+    </p>
+  </header>
+
+  <div class="stat-cards">
+    <div class="stat-card">
+      <h2>{{ student_count }}</h2>
+      <p>Enrolled students</p>
+    </div>
+
+    <div class="stat-card">
+      <h2>{{ present_today }}/{{ marked_today }}</h2>
+      <p>Present today ({{ today }})</p>
+    </div>
+  </div>
+
+  <div class="quick-links">
+    <a class="btn" href="{{ url_for('students.add_student') }}">Enroll a Student</a>
+    <a class="btn secondary" href="{{ url_for('attendance.take') }}">Take Attendance</a>
+  </div>
+{% endblock %}

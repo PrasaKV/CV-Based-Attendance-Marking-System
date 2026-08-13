@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Results - SAMS{% endblock %}
+
+{% block content %}
+  <header class="results-header">
+    <h1>Attendance Results — {{ date }}</h1>
+    <a href="{{ url_for('attendance.take') }}" class="btn secondary">← Take Again</a>
+  </header>
+
+  <section class="image-section">
+    <h2>
+      Annotated Photo
+      {% if unknown_count %}({{ unknown_count }} unrecognized face(s)){% endif %}
+    </h2>
+    <img
+      class="annotated-photo"
+      src="{{ url_for('static', filename='captures/' + image_path) }}"
+      alt="Annotated attendance photo"
+    />
+  </section>
+
+  <section class="table-section">
+    <h2>Attendance</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Roll No</th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Confidence</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in results %}
+          <tr>
+            <td>{{ row.roll_no }}</td>
+            <td>{{ row.name }}</td>
+            <td class="{{ 'status-present' if row.status == 'Present' else 'status-absent' }}">
+              {{ row.status }}
+            </td>
+            <td>{{ row.confidence if row.confidence is not none else '—' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

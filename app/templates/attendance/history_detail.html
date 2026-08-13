@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}{{ date }} - History - SAMS{% endblock %}
+
+{% block content %}
+  <header class="results-header">
+    <h1>Attendance — {{ date }}</h1>
+    <a href="{{ url_for('attendance.history') }}" class="btn secondary">← All Dates</a>
+  </header>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Roll No</th>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Confidence</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for r in records %}
+        <tr>
+          <td>{{ r.student.roll_no }}</td>
+          <td>{{ r.student.name }}</td>
+          <td class="{{ 'status-present' if r.status == 'Present' else 'status-absent' }}">
+            {{ r.status }}
+          </td>
+          <td>{{ r.confidence if r.confidence is not none else '—' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
