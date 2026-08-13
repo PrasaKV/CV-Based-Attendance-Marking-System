@@ -1,0 +1,6 @@
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+# Pinned: opencv-contrib-python 5.x wheels ship without the bundled Haar
+# cascade XML data files that FaceEngine relies on for detection.
+opencv-contrib-python==4.10.0.84
+numpy>=1.24

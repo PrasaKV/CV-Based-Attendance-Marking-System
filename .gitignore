@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+instance/
+attendance.db
+
+data/dataset/*
+!data/dataset/.gitkeep
+data/trained_model/*
+!data/trained_model/.gitkeep
+
+app/static/captures/
