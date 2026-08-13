@@ -2,10 +2,10 @@
 Service layer for attendance management
 """
 import cv2
-import sqlite3
 import os
 import re
 from config import Config
+from database import Database
 
 
 class AttendanceManager:
@@ -19,27 +19,7 @@ class AttendanceManager:
     def __init__(self, db_name=None):
         self.db_name = db_name or Config.DATABASE
         self.upload_folder = Config.UPLOAD_FOLDER
-        self.init_db()
-
-    def init_db(self):
-        """Initialize the database with attendance table"""
-        conn = sqlite3.connect(self.db_name)
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS attendance (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT,
-                student_index TEXT,
-                student_name TEXT,
-                status TEXT
-            )
-            """
-        )
-
-        conn.commit()
-        conn.close()
+        self.db = Database(self.db_name)
 
     def parse_students_text(self, xml_file):
         """Parse student information from XML file"""
@@ -153,6 +133,24 @@ class AttendanceManager:
 
             pixel_count = cv2.countNonZero(
                 signature_roi
+        results = []
+
+        for i, student in enumerate(students):
+            y_start = i * row_height
+            y_end = (i + 1) * row_height
+
+            x_start = int(
+                width * self.SIGNATURE_START_RATIO
+            )
+            x_end = width
+
+            signature_roi = binarized_img[
+                y_start:y_end,
+                x_start:x_end
+            ]
+
+            pixel_count = cv2.countNonZero(
+                signature_roi
             )
 
             status = (
@@ -169,21 +167,9 @@ class AttendanceManager:
                 }
             )
 
-            cursor.execute(
-                """
-                INSERT INTO attendance
-                (date, student_index, student_name, status)
-                VALUES (?, ?, ?, ?)
-                """,
-                (
-                    date,
-                    student["index"],
-                    student["name"],
-                    status
-                )
-            )
-
-        conn.commit()
-        conn.close()
-
-        return results
+            self.db.insert_attendance(
+                date,
+                student["index"],
+                student["name"],
+                status
+            
