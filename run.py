@@ -2,9 +2,26 @@
 Application entry point
 """
 import os
-from app import create_app
+from flask import Flask
+from routes import attendance_bp
+from config import config
 
-app = create_app(os.getenv("FLASK_ENV", "development"))
+
+def create_app(config_name="development"):
+    """Application factory"""
+    app = Flask(__name__)
+    
+    # Load configuration
+    app.config.from_object(config[config_name])
+    
+    # Ensure upload folder exists
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    
+    # Register blueprints
+    app.register_blueprint(attendance_bp)
+    
+    return app
+
 
 if __name__ == "__main__":
     app.run(

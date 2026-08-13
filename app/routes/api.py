@@ -251,6 +251,7 @@ def export_session_csv(session_id):
 @api_bp.route("/sessions/<int:session_id>/export/pdf", methods=["GET"])
 def export_session_pdf(session_id):
     db = get_db()
+<<<<<<< HEAD
     session = db.get_session(session_id)
     if not session:
         return jsonify({"error": "Session not found"}), 404
@@ -288,3 +289,260 @@ def export_session_excel(session_id):
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+=======
+    stats = db.get_analytics_summary()
+    return jsonify({"success": True, "data": stats})
+
+
+# ===== AUTO-GENERATED CRUD & QUERY ROUTES =====
+
+@api_bp.route("/sessions", methods=["GET"])
+def list_sessions():
+    """List all sessions with pagination support"""
+    db = get_db()
+    limit = request.args.get("limit", default=50, type=int)
+    offset = request.args.get("offset", default=0, type=int)
+    
+    sessions = db.get_all_sessions(limit=limit)
+    
+    return jsonify({
+        "success": True,
+        "count": len(sessions),
+        "data": sessions
+    })
+
+
+@api_bp.route("/sessions/<session_id_or_key>", methods=["GET"])
+def get_session_details(session_id_or_key):
+    """Get detailed information about a specific session"""
+    db = get_db()
+    session = db.get_session(session_id_or_key)
+    
+    if not session:
+        return jsonify({"success": False, "error": "Session not found"}), 404
+    
+    return jsonify({
+        "success": True,
+        "data": session
+    })
+
+
+@api_bp.route("/sessions/<int:session_id>/records", methods=["GET"])
+def get_session_records_endpoint(session_id):
+    """Get all attendance records for a specific session"""
+    db = get_db()
+    session = db.get_session(session_id)
+    
+    if not session:
+        return jsonify({"success": False, "error": "Session not found"}), 404
+    
+    records = db.get_session_records(session_id)
+    
+    return jsonify({
+        "success": True,
+        "session_id": session_id,
+        "count": len(records),
+        "data": records
+    })
+
+
+@api_bp.route("/records/<int:record_id>", methods=["GET"])
+def get_record_details(record_id):
+    """Get details of a specific attendance record"""
+    db = get_db()
+    record = db.get_record(record_id)
+    
+    if not record:
+        return jsonify({"success": False, "error": "Record not found"}), 404
+    
+    return jsonify({
+        "success": True,
+        "data": record
+    })
+
+
+@api_bp.route("/records/<int:record_id>", methods=["PUT"])
+def update_record(record_id):
+    """Update a specific attendance record"""
+    db = get_db()
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+    
+    updated = db.update_record(record_id, data)
+    
+    if not updated:
+        return jsonify({"success": False, "error": "Record not found"}), 404
+    
+    return jsonify({
+        "success": True,
+        "message": "Record updated successfully",
+        "data": updated
+    })
+
+
+@api_bp.route("/sessions/<int:session_id>/records", methods=["POST"])
+def create_attendance_record(session_id):
+    """Create a new attendance record for a session"""
+    db = get_db()
+    session = db.get_session(session_id)
+    
+    if not session:
+        return jsonify({"success": False, "error": "Session not found"}), 404
+    
+    data = request.get_json()
+    if not data or "student_index" not in data or "status" not in data:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+    
+    record_id = db.create_record(session_id, data)
+    
+    if not record_id:
+        return jsonify({"success": False, "error": "Failed to create record"}), 500
+    
+    return jsonify({
+        "success": True,
+        "message": "Record created successfully",
+        "record_id": record_id
+    }), 201
+
+
+@api_bp.route("/sessions/<int:session_id>", methods=["DELETE"])
+def delete_session(session_id):
+    """Delete a session and all associated records"""
+    db = get_db()
+    session = db.get_session(session_id)
+    
+    if not session:
+        return jsonify({"success": False, "error": "Session not found"}), 404
+    
+    success = db.delete_session(session_id)
+    
+    if not success:
+        return jsonify({"success": False, "error": "Failed to delete session"}), 500
+    
+    return jsonify({
+        "success": True,
+        "message": "Session deleted successfully"
+    })
+
+
+@api_bp.route("/records/<int:record_id>", methods=["DELETE"])
+def delete_record(record_id):
+    """Delete a specific attendance record"""
+    db = get_db()
+    record = db.get_record(record_id)
+    
+    if not record:
+        return jsonify({"success": False, "error": "Record not found"}), 404
+    
+    success = db.delete_record(record_id)
+    
+    if not success:
+        return jsonify({"success": False, "error": "Failed to delete record"}), 500
+    
+    return jsonify({
+        "success": True,
+        "message": "Record deleted successfully"
+    })
+
+
+@api_bp.route("/students", methods=["GET"])
+def list_all_students():
+    """Get all unique students from all sessions"""
+    db = get_db()
+    students = db.get_all_unique_students()
+    
+    return jsonify({
+        "success": True,
+        "count": len(students),
+        "data": students
+    })
+
+
+@api_bp.route("/students/<student_index>", methods=["GET"])
+def get_student_history(student_index):
+    """Get attendance history for a specific student"""
+    db = get_db()
+    history = db.get_student_attendance_history(student_index)
+    
+    if not history:
+        return jsonify({"success": False, "error": "No records found for this student"}), 404
+    
+    return jsonify({
+        "success": True,
+        "student_index": student_index,
+        "count": len(history),
+        "data": history
+    })
+
+
+@api_bp.route("/sessions/search", methods=["GET"])
+def search_sessions():
+    """Search sessions by date or title"""
+    db = get_db()
+    query = request.args.get("q", "").strip()
+    
+    if not query:
+        return jsonify({"success": False, "error": "Search query required"}), 400
+    
+    results = db.search_sessions(query)
+    
+    return jsonify({
+        "success": True,
+        "query": query,
+        "count": len(results),
+        "data": results
+    })
+
+
+@api_bp.route("/sessions/date-range", methods=["GET"])
+def get_sessions_by_date_range():
+    """Get sessions within a date range"""
+    db = get_db()
+    start_date = request.args.get("start", "").strip()
+    end_date = request.args.get("end", "").strip()
+    
+    if not start_date or not end_date:
+        return jsonify({"success": False, "error": "start and end dates required"}), 400
+    
+    sessions = db.get_sessions_by_date_range(start_date, end_date)
+    
+    return jsonify({
+        "success": True,
+        "start_date": start_date,
+        "end_date": end_date,
+        "count": len(sessions),
+        "data": sessions
+    })
+
+
+@api_bp.route("/sessions/<int:session_id>/summary", methods=["GET"])
+def get_session_summary(session_id):
+    """Get summary statistics for a session"""
+    db = get_db()
+    session = db.get_session(session_id)
+    
+    if not session:
+        return jsonify({"success": False, "error": "Session not found"}), 404
+    
+    records = db.get_session_records(session_id)
+    
+    present_count = sum(1 for r in records if r["status"] == "Present")
+    absent_count = sum(1 for r in records if r["status"] == "Absent")
+    total = len(records)
+    attendance_rate = (present_count / total * 100) if total > 0 else 0
+    
+    return jsonify({
+        "success": True,
+        "session_id": session_id,
+        "summary": {
+            "total_students": total,
+            "present_count": present_count,
+            "absent_count": absent_count,
+            "attendance_rate": round(attendance_rate, 1),
+            "date": session.get("date_str"),
+            "title": session.get("title")
+        }
+    })
+>>>>>>> df323ea2de518a15290d644315f979396912730a

@@ -274,6 +274,7 @@ class DatabaseManager:
             "recent_trend": recent_trend
         }
 
+<<<<<<< HEAD
     # --- Student Master CRUD methods ---
     def get_all_master_students(self, batch=None):
         conn = self.get_connection()
@@ -282,10 +283,125 @@ class DatabaseManager:
             cursor.execute("SELECT * FROM master_students WHERE batch = ? ORDER BY student_index ASC", (batch,))
         else:
             cursor.execute("SELECT * FROM master_students ORDER BY student_index ASC")
+=======
+    # ===== AUTO-GENERATED DATABASE METHODS =====
+
+    def get_record(self, record_id):
+        """Get a specific attendance record by ID"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM attendance_records WHERE id = ?", (record_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def create_record(self, session_id, data):
+        """Create a new attendance record"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO attendance_records
+                (session_id, student_index, student_name, status, original_status, pixel_count, crop_image)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_id,
+                data.get("student_index", ""),
+                data.get("student_name", ""),
+                data.get("status", "Absent"),
+                data.get("status", "Absent"),
+                data.get("pixel_count", 0),
+                data.get("crop_image", "")
+            ))
+            record_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            return record_id
+        except Exception as e:
+            conn.close()
+            return None
+
+    def update_record(self, record_id, data):
+        """Update an attendance record"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        record = self.get_record(record_id)
+        if not record:
+            conn.close()
+            return None
+
+        # Update status if provided
+        if "status" in data:
+            new_status = data["status"]
+            is_overridden = 1 if new_status != record["original_status"] else 0
+
+            cursor.execute("""
+                UPDATE attendance_records
+                SET status = ?, is_manually_overridden = ?
+                WHERE id = ?
+            """, (new_status, is_overridden, record_id))
+        
+        # Update other fields
+        if "student_name" in data:
+            cursor.execute("UPDATE attendance_records SET student_name = ? WHERE id = ?",
+                          (data["student_name"], record_id))
+        if "pixel_count" in data:
+            cursor.execute("UPDATE attendance_records SET pixel_count = ? WHERE id = ?",
+                          (data["pixel_count"], record_id))
+        if "crop_image" in data:
+            cursor.execute("UPDATE attendance_records SET crop_image = ? WHERE id = ?",
+                          (data["crop_image"], record_id))
+
+        conn.commit()
+        conn.close()
+        return self.get_record(record_id)
+
+    def delete_session(self, session_id):
+        """Delete a session and all associated records"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("DELETE FROM attendance_records WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            conn.close()
+            return False
+
+    def delete_record(self, record_id):
+        """Delete a specific attendance record"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("DELETE FROM attendance_records WHERE id = ?", (record_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            conn.close()
+            return False
+
+    def get_all_unique_students(self):
+        """Get all unique students from all sessions"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT student_index, student_name 
+            FROM attendance_records 
+            ORDER BY student_index ASC
+        """)
+>>>>>>> df323ea2de518a15290d644315f979396912730a
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
 
+<<<<<<< HEAD
     def add_master_student(self, student_index, student_name, batch="batch_2016_1", email=""):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -331,3 +447,48 @@ class DatabaseManager:
         raw_str = ET.tostring(nsbm, encoding="utf-8")
         parsed = minidom.parseString(raw_str)
         return parsed.toprettyxml(indent="    ")
+=======
+    def get_student_attendance_history(self, student_index):
+        """Get attendance history for a specific student"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                ar.*, 
+                s.date_str, s.title, s.created_at
+            FROM attendance_records ar
+            JOIN sessions s ON ar.session_id = s.id
+            WHERE ar.student_index = ?
+            ORDER BY s.created_at DESC
+        """, (student_index,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def search_sessions(self, query):
+        """Search sessions by date or title"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        query_pattern = f"%{query}%"
+        cursor.execute("""
+            SELECT * FROM sessions 
+            WHERE date_str LIKE ? OR title LIKE ? OR session_key LIKE ?
+            ORDER BY created_at DESC
+        """, (query_pattern, query_pattern, query_pattern))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_sessions_by_date_range(self, start_date, end_date):
+        """Get sessions within a date range"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM sessions 
+            WHERE date_str BETWEEN ? AND ?
+            ORDER BY created_at DESC
+        """, (start_date, end_date))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+>>>>>>> df323ea2de518a15290d644315f979396912730a
