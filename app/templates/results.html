@@ -7,13 +7,24 @@
 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h1 class="header-title" style="margin-bottom: 0.2rem;">{{ session.title }}</h1>
-    <p style="color: var(--text-muted); font-size: 0.95rem;">Session Key: <code>{{ session.session_key }}</code> | Date: {{ session.date_str }}</p>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Session Key: <code>{{ session.session_key }}</code> | Date: {{ session.date_str }}
+      {% if session.faces_detected > 0 %}
+        | <span style="color: #38bdf8; font-weight: 600;">👤 {{ session.faces_detected }} Face(s) Detected</span>
+      {% endif %}
+    </p>
   </div>
-  <div style="display: flex; gap: 0.75rem;">
-    <a href="{{ url_for('api.export_session_csv', session_id=session.id) }}" class="btn btn-secondary" style="padding: 0.65rem 1.2rem; font-size: 0.9rem;">
-      📥 Export CSV
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <a href="{{ url_for('api.export_session_pdf', session_id=session.id) }}" class="btn btn-secondary" style="padding: 0.55rem 1rem; font-size: 0.85rem;">
+      📄 Download PDF
     </a>
-    <a href="{{ url_for('web.index') }}" class="btn" style="padding: 0.65rem 1.2rem; font-size: 0.9rem;">
+    <a href="{{ url_for('api.export_session_excel', session_id=session.id) }}" class="btn btn-secondary" style="padding: 0.55rem 1rem; font-size: 0.85rem;">
+      📊 Download Excel
+    </a>
+    <a href="{{ url_for('api.export_session_csv', session_id=session.id) }}" class="btn btn-secondary" style="padding: 0.55rem 1rem; font-size: 0.85rem;">
+      📥 CSV
+    </a>
+    <a href="{{ url_for('web.index') }}" class="btn" style="padding: 0.55rem 1rem; font-size: 0.85rem;">
       ← Upload Another Sheet
     </a>
   </div>
@@ -59,7 +70,7 @@
           <th>Student Name</th>
           <th>Status (Click to Toggle)</th>
           <th>Ink Pixels</th>
-          <th>Signature Crop Crop</th>
+          <th>Signature Crop</th>
         </tr>
       </thead>
       <tbody>
@@ -97,14 +108,14 @@
   <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem;">Computer Vision Processing Pipeline</h2>
 
   <div class="tab-buttons">
-    <button class="tab-btn active" data-tab="annotated">1. Annotated Bounding Boxes</button>
+    <button class="tab-btn active" data-tab="annotated">1. Bounding Boxes & Face Detection</button>
     <button class="tab-btn" data-tab="original">2. Original Upload</button>
     <button class="tab-btn" data-tab="grayscale">3. Grayscale</button>
     <button class="tab-btn" data-tab="binarized">4. Thresholded Binarization</button>
   </div>
 
   <div class="tab-content active" id="tab-annotated">
-    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">Original sheet overlaid with ROI bounding boxes and index tags (Green = Present, Red = Absent).</p>
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">Original sheet overlaid with ROI bounding boxes (Green = Present, Red = Absent) and detected face boxes (Cyan).</p>
     <img src="{{ url_for('static', filename=session.annotated_image) }}" alt="Annotated Image" class="preview-img">
   </div>
 

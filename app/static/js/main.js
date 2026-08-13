@@ -1,4 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
+  
+  // --- Theme Toggle Switcher ---
+  const themeBtn = document.getElementById('theme-toggle');
+  const savedTheme = localStorage.getItem('sams_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  if (themeBtn) {
+    themeBtn.textContent = savedTheme === 'light' ? '☀️ Light' : '🌙 Dark';
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('sams_theme', next);
+      themeBtn.textContent = next === 'light' ? '☀️ Light' : '🌙 Dark';
+    });
+  }
+
   // --- Drag and Drop File Upload Handlers ---
   const setupDropzone = (dropzoneId, inputId, previewId) => {
     const dropzone = document.getElementById(dropzoneId);
@@ -49,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDropzone('dropzone-image', 'input-image', 'preview-image');
   setupDropzone('dropzone-xml', 'input-xml', 'preview-xml');
 
-  // --- AJAX Form Processing ---
+  // --- AJAX File Upload Processing ---
   const uploadForm = document.getElementById('upload-form');
   const uploadBtn = document.getElementById('submit-btn');
   const errorAlert = document.getElementById('upload-error');
@@ -98,6 +114,149 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- WebRTC Camera Scanner Stream ---
+  const videoElem = document.getElementById('webcam-video');
+  const captureBtn = document.getElementById('capture-btn');
+  const cameraSelect = document.getElementById('camera-select');
+  const scannerAlert = document.getElementById('scanner-alert');
+
+  if (videoElem && captureBtn) {
+    let currentStream = null;
+
+    const startCamera = async (deviceId) => {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
+      };
+
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElem.srcObject = currentStream;
+      } catch (err) {
+        if (scannerAlert) {
+          scannerAlert.textContent = 'Unable to access camera. Please allow camera permissions.';
+          scannerAlert.style.display = 'block';
+        }
+      }
+    };
+
+    const enumerateCameras = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        if (cameraSelect) {
+          cameraSelect.innerHTML = videoDevices.map((d, i) => `<option value="${d.deviceId}">${d.label || 'Camera ' + (i+1)}</option>`).join('');
+          if (videoDevices.length > 0) startCamera(videoDevices[0].deviceId);
+        }
+      } catch (e) {
+        startCamera();
+      }
+    };
+
+    if (cameraSelect) {
+      cameraSelect.addEventListener('change', () => startCamera(cameraSelect.value));
+    }
+
+    enumerateCameras();
+
+    // Snapshot Capture Handler
+    captureBtn.addEventListener('click', async () => {
+      const canvas = document.getElementById('snapshot-canvas');
+      if (!canvas || !videoElem.videoWidth) return;
+
+      canvas.width = videoElem.videoWidth;
+      canvas.height = videoElem.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoElem, 0, 0);
+
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+      captureBtn.disabled = true;
+      captureBtn.textContent = 'Processing Live Snapshot...';
+
+      try {
+        const payload = {
+          image_data: imageDataUrl,
+          signature_ratio: parseFloat(document.getElementById('webcam-ratio')?.value || 0.60),
+          pixel_threshold: parseInt(document.getElementById('webcam-thresh')?.value || 100)
+        };
+
+        const res = await fetch('/api/webcam/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+
+        if (json.success) {
+          window.location.href = json.redirect_url;
+        } else {
+          if (scannerAlert) {
+            scannerAlert.textContent = json.error || 'Failed to analyze snapshot.';
+            scannerAlert.style.display = 'block';
+          }
+          captureBtn.disabled = false;
+          captureBtn.textContent = '📸 Capture & Analyze Sheet';
+        }
+      } catch (err) {
+        if (scannerAlert) {
+          scannerAlert.textContent = 'Server error processing live snapshot.';
+          scannerAlert.style.display = 'block';
+        }
+        captureBtn.disabled = false;
+        captureBtn.textContent = '📸 Capture & Analyze Sheet';
+      }
+    });
+  }
+
+  // --- Student Roster CRUD Handlers ---
+  const addStudentForm = document.getElementById('add-student-form');
+  if (addStudentForm) {
+    addStudentForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(addStudentForm);
+      const data = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch('/api/students/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (json.success) {
+          window.location.reload();
+        } else {
+          alert(json.error || 'Failed to add student');
+        }
+      } catch (err) {
+        alert('Server error adding student');
+      }
+    });
+  }
+
+  document.querySelectorAll('.btn-delete-student').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const studentId = btn.getAttribute('data-student-id');
+      if (!studentId || !confirm('Are you sure you want to delete this student from roster?')) return;
+
+      try {
+        const res = await fetch(`/api/students/${studentId}/delete`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById(`student-row-${studentId}`)?.remove();
+        }
+      } catch (err) {
+        alert('Failed to delete student');
+      }
+    });
+  });
+
   // --- Attendance Record Status Toggle (AJAX) ---
   document.querySelectorAll('.status-badge').forEach(badge => {
     badge.addEventListener('click', async () => {
@@ -120,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.innerHTML = '✖ Absent';
           }
 
-          // Update header counter badges
           const presentStat = document.getElementById('stat-present');
           const absentStat = document.getElementById('stat-absent');
           if (presentStat) presentStat.textContent = json.data.present_count;

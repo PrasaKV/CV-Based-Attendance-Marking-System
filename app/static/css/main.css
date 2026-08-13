@@ -18,6 +18,24 @@
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Light Theme Variables */
+[data-theme="light"] {
+  --bg-color: #f8fafc;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --card-border: rgba(203, 213, 225, 0.6);
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-glow: rgba(79, 70, 229, 0.2);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --present-bg: rgba(34, 197, 94, 0.12);
+  --present-color: #16a34a;
+  --present-border: rgba(34, 197, 94, 0.4);
+  --absent-bg: rgba(239, 68, 68, 0.12);
+  --absent-color: #dc2626;
+  --absent-border: rgba(239, 68, 68, 0.4);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -50,13 +68,17 @@ body {
   z-index: 100;
 }
 
+[data-theme="light"] .navbar {
+  background: rgba(255, 255, 255, 0.85);
+}
+
 .nav-brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   font-weight: 700;
   font-size: 1.25rem;
-  color: #fff;
+  color: var(--text-main);
   text-decoration: none;
 }
 
@@ -75,23 +97,23 @@ body {
 
 .nav-links {
   display: flex;
-  gap: 1.5rem;
+  gap: 1.2rem;
   list-style: none;
 }
 
 .nav-link {
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 500;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 8px;
   transition: var(--transition);
 }
 
 .nav-link:hover, .nav-link.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  background: rgba(99, 102, 241, 0.12);
 }
 
 /* Layout Containers */
@@ -107,7 +129,7 @@ body {
   border: 1px solid var(--card-border);
   border-radius: var(--border-radius);
   padding: 2rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   margin-bottom: 2rem;
 }
 
@@ -116,7 +138,7 @@ body {
   font-size: 2.2rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -146,6 +168,10 @@ body {
   position: relative;
 }
 
+[data-theme="light"] .dropzone {
+  background: rgba(241, 245, 249, 0.6);
+}
+
 .dropzone:hover, .dropzone.dragover {
   border-color: var(--primary);
   background: rgba(99, 102, 241, 0.08);
@@ -160,7 +186,7 @@ body {
 .dropzone-title {
   font-weight: 600;
   font-size: 1.1rem;
-  color: #fff;
+  color: var(--text-main);
   margin-bottom: 0.25rem;
 }
 
@@ -206,6 +232,10 @@ body {
   gap: 1.5rem;
 }
 
+[data-theme="light"] .accordion-body {
+  background: rgba(241, 245, 249, 0.8);
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
@@ -223,8 +253,12 @@ body {
   background: rgba(30, 41, 59, 0.8);
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-main);
   font-size: 0.95rem;
+}
+
+[data-theme="light"] .form-control {
+  background: #ffffff;
 }
 
 .form-control:focus {
@@ -258,12 +292,17 @@ body {
 
 .btn-secondary {
   background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
   box-shadow: none;
   border: 1px solid var(--card-border);
 }
 
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
+[data-theme="light"] .btn-secondary {
+  background: #ffffff;
+}
+
+.btn-secondary:hover, .btn-secondary.active {
+  background: rgba(99, 102, 241, 0.15);
   box-shadow: none;
 }
 
@@ -292,7 +331,10 @@ th {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
 
+[data-theme="light"] th {
+  background: #e2e8f0;
 }
 
 tr:hover td {
@@ -361,10 +403,14 @@ tr:hover td {
   gap: 0.5rem;
 }
 
+[data-theme="light"] .stat-card {
+  background: #ffffff;
+}
+
 .stat-value {
   font-size: 2.2rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .stat-label {
@@ -414,7 +460,7 @@ tr:hover td {
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-/* Image Zoom Modal */
+/* Image Zoom & Form Modals */
 .modal {
   display: none;
   position: fixed;
@@ -438,6 +484,12 @@ tr:hover td {
 }
 
 /* Responsive */
+@media (max-width: 900px) {
+  .scanner-container {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 768px) {
   .dropzone-container {
     grid-template-columns: 1fr;
@@ -445,9 +497,11 @@ tr:hover td {
 
   .navbar {
     padding: 1rem;
+    flex-wrap: wrap;
+    gap: 0.8rem;
   }
 
   .nav-links {
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 }

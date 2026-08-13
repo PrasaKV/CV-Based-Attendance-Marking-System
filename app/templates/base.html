@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}SAMS - Computer Vision Attendance System{% endblock %}</title>
+  <title>{% block title %}SAMS v2.0 - Computer Vision Attendance System{% endblock %}</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,14 +17,20 @@
   <nav class="navbar">
     <a href="{{ url_for('web.index') }}" class="nav-brand">
       <div class="brand-icon">S</div>
-      <span>SAMS CV Engine</span>
+      <span>SAMS CV Engine <small style="font-size: 0.65rem; background: var(--primary); padding: 2px 6px; border-radius: 4px; vertical-align: middle;">v2.0</small></span>
     </a>
     
     <ul class="nav-links">
       <li><a href="{{ url_for('web.index') }}" class="nav-link {% if request.endpoint == 'web.index' %}active{% endif %}">Dashboard</a></li>
-      <li><a href="{{ url_for('web.history') }}" class="nav-link {% if request.endpoint == 'web.history' %}active{% endif %}">Sessions History</a></li>
-      <li><a href="{{ url_for('web.analytics') }}" class="nav-link {% if request.endpoint == 'web.analytics' %}active{% endif %}">Analytics</a></li>
+      <li><a href="{{ url_for('web.scanner') }}" class="nav-link {% if request.endpoint == 'web.scanner' %}active{% endif %}">Live Scanner 📷</a></li>
+      <li><a href="{{ url_for('web.students') }}" class="nav-link {% if request.endpoint == 'web.students' %}active{% endif %}">Roster Manager 👥</a></li>
+      <li><a href="{{ url_for('web.history') }}" class="nav-link {% if request.endpoint == 'web.history' %}active{% endif %}">History 📜</a></li>
+      <li><a href="{{ url_for('web.analytics') }}" class="nav-link {% if request.endpoint == 'web.analytics' %}active{% endif %}">Analytics 📊</a></li>
     </ul>
+
+    <button id="theme-toggle" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" title="Toggle Light/Dark Theme">
+      🌙 Dark
+    </button>
   </nav>
 
   <!-- Main Container -->

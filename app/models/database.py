@@ -1,9 +1,11 @@
 import os
 import sqlite3
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from flask import g
 
 class DatabaseManager:
-    """Manages SQLite database connection and queries for SAMS"""
+    """Manages SQLite database connection and queries for SAMS v2.0"""
 
     def __init__(self, db_path):
         self.db_path = db_path
@@ -15,7 +17,7 @@ class DatabaseManager:
         return conn
 
     def init_db(self):
-        """Creates table schemas if they do not exist"""
+        """Creates table schemas if they do not exist and applies migrations"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -33,9 +35,19 @@ class DatabaseManager:
                 total_students INTEGER DEFAULT 0,
                 present_count INTEGER DEFAULT 0,
                 absent_count INTEGER DEFAULT 0,
+                faces_detected INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Migration: Ensure faces_detected column exists if table was created previously
+        cursor.execute("PRAGMA table_info(sessions)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if "faces_detected" not in columns:
+            try:
+                cursor.execute("ALTER TABLE sessions ADD COLUMN faces_detected INTEGER DEFAULT 0")
+            except Exception as e:
+                print(f"[DB Migration] Column addition notice: {e}")
 
         # Attendance Records table
         cursor.execute("""
@@ -53,7 +65,35 @@ class DatabaseManager:
             )
         """)
 
-        # Migration helper for legacy attendance table if present
+        # Master Students table for Roster CRUD
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS master_students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_index TEXT UNIQUE,
+                student_name TEXT,
+                batch TEXT DEFAULT 'batch_2016_1',
+                email TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Seed initial sample students if table is empty
+        cursor.execute("SELECT COUNT(*) as cnt FROM master_students")
+        if cursor.fetchone()["cnt"] == 0:
+            sample_students = [
+                ("10000409", "M S Dilshanika Perera", "batch_2016_1", "dilshanika@nsbm.lk"),
+                ("10009301", "C W M A Shehan Abeyrathne", "batch_2016_1", "shehan@nsbm.lk"),
+                ("10009302", "B A K M Chithrananda", "batch_2016_1", "chithrananda@nsbm.lk"),
+                ("10009303", "W Shashini Minosha De Silva", "batch_2016_1", "shashini@nsbm.lk"),
+                ("10009304", "K L Udara Maduranga Liyanage", "batch_2016_1", "udara@nsbm.lk"),
+                ("10009306", "Hansa Anuradha Wickramanayake", "batch_2016_1", "hansa@nsbm.lk"),
+            ]
+            cursor.executemany("""
+                INSERT INTO master_students (student_index, student_name, batch, email)
+                VALUES (?, ?, ?, ?)
+            """, sample_students)
+
+        # Legacy table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS attendance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +107,7 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-    def save_session_results(self, session_key, title, date_str, step_images, results):
+    def save_session_results(self, session_key, title, date_str, step_images, results, faces_detected=0):
         """Saves session metadata and student attendance records"""
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -78,8 +118,8 @@ class DatabaseManager:
 
         cursor.execute("""
             INSERT INTO sessions 
-            (session_key, title, date_str, original_image, annotated_image, grayscale_image, thresh_image, total_students, present_count, absent_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (session_key, title, date_str, original_image, annotated_image, grayscale_image, thresh_image, total_students, present_count, absent_count, faces_detected)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             session_key,
             title,
@@ -90,7 +130,8 @@ class DatabaseManager:
             step_images.get("binarized", ""),
             total,
             present,
-            absent
+            absent,
+            faces_detected
         ))
         session_id = cursor.lastrowid
 
@@ -109,7 +150,6 @@ class DatabaseManager:
                 record.get("crop_image", "")
             ))
 
-            # Legacy fallback insertion
             cursor.execute("""
                 INSERT INTO attendance (date, student_index, student_name, status)
                 VALUES (?, ?, ?, ?)
@@ -120,7 +160,6 @@ class DatabaseManager:
         return session_id
 
     def get_session(self, session_id_or_key):
-        """Retrieve session by ID or key string"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -134,7 +173,6 @@ class DatabaseManager:
         return dict(row) if row else None
 
     def get_session_records(self, session_id):
-        """Get all attendance records for a session"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM attendance_records WHERE session_id = ? ORDER BY id ASC", (session_id,))
@@ -143,7 +181,6 @@ class DatabaseManager:
         return [dict(r) for r in rows]
 
     def toggle_record_status(self, record_id):
-        """Toggle status between Present and Absent manually"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -162,7 +199,6 @@ class DatabaseManager:
             WHERE id = ?
         """, (new_status, is_overridden, record_id))
 
-        # Recalculate session statistics
         session_id = record["session_id"]
         cursor.execute("""
             SELECT 
@@ -191,7 +227,6 @@ class DatabaseManager:
         }
 
     def get_all_sessions(self, limit=50):
-        """Retrieve recent sessions"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM sessions ORDER BY created_at DESC LIMIT ?", (limit,))
@@ -200,7 +235,6 @@ class DatabaseManager:
         return [dict(r) for r in rows]
 
     def get_analytics_summary(self):
-        """Get aggregate statistics for analytics dashboard"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -239,3 +273,61 @@ class DatabaseManager:
             "attendance_rate": round(rate, 1),
             "recent_trend": recent_trend
         }
+
+    # --- Student Master CRUD methods ---
+    def get_all_master_students(self, batch=None):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        if batch:
+            cursor.execute("SELECT * FROM master_students WHERE batch = ? ORDER BY student_index ASC", (batch,))
+        else:
+            cursor.execute("SELECT * FROM master_students ORDER BY student_index ASC")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def add_master_student(self, student_index, student_name, batch="batch_2016_1", email=""):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO master_students (student_index, student_name, batch, email)
+                VALUES (?, ?, ?, ?)
+            """, (student_index.strip(), student_name.strip(), batch.strip(), email.strip()))
+            conn.commit()
+            student_id = cursor.lastrowid
+            conn.close()
+            return True, student_id
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False, "Student Index already exists."
+        except Exception as e:
+            conn.close()
+            return False, str(e)
+
+    def delete_master_student(self, student_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM master_students WHERE id = ?", (student_id,))
+        conn.commit()
+        conn.close()
+        return True
+
+    def generate_roster_xml(self, batch="batch_2016_1"):
+        students = self.get_all_master_students(batch)
+        
+        nsbm = ET.Element("nsbm")
+        students_elem = ET.SubElement(nsbm, "students")
+        batches_elem = ET.SubElement(students_elem, "batches")
+        batch_elem = ET.SubElement(batches_elem, batch)
+
+        for s in students:
+            student_elem = ET.SubElement(batch_elem, "student")
+            idx_elem = ET.SubElement(student_elem, "index")
+            idx_elem.text = s["student_index"]
+            name_elem = ET.SubElement(student_elem, "name")
+            name_elem.text = s["student_name"]
+
+        raw_str = ET.tostring(nsbm, encoding="utf-8")
+        parsed = minidom.parseString(raw_str)
+        return parsed.toprettyxml(indent="    ")

@@ -2,6 +2,8 @@ import os
 import uuid
 import csv
 import io
+import base64
+import datetime
 from flask import (
     Blueprint,
     request,
@@ -42,7 +44,6 @@ def process_upload():
     if not allowed_file(student_file.filename, current_app.config["ALLOWED_DATA_EXTENSIONS"]):
         return jsonify({"success": False, "error": "Invalid student info format. Allowed: XML, JSON"}), 400
 
-    # Read optional custom CV settings
     signature_ratio = float(request.form.get("signature_ratio", current_app.config["CV_SIGNATURE_START_RATIO"]))
     threshold_val = int(request.form.get("threshold_val", current_app.config["CV_THRESHOLD_VALUE"]))
     pixel_threshold = int(request.form.get("pixel_threshold", current_app.config["CV_PRESENT_PIXEL_THRESHOLD"]))
@@ -71,7 +72,7 @@ def process_upload():
     title = f"Attendance - {date_str}"
 
     try:
-        step_images, results = cv_engine.process_and_analyze(
+        step_images, results, faces_cnt = cv_engine.process_and_analyze(
             image_path=img_path,
             students=students,
             session_prefix=session_key,
@@ -87,7 +88,8 @@ def process_upload():
             title=title,
             date_str=date_str,
             step_images=step_images,
-            results=results
+            results=results,
+            faces_detected=faces_cnt
         )
 
         return jsonify({
@@ -101,9 +103,72 @@ def process_upload():
         return jsonify({"success": False, "error": f"CV Processing Error: {str(e)}"}), 500
 
 
+@api_bp.route("/webcam/process", methods=["POST"])
+def process_webcam():
+    """Endpoint for processing camera snapshot (base64 image)"""
+    data = request.get_json()
+    if not data or "image_data" not in data:
+        return jsonify({"success": False, "error": "No camera image payload received."}), 400
+
+    image_data_url = data["image_data"]
+    try:
+        header, encoded = image_data_url.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+    except Exception:
+        return jsonify({"success": False, "error": "Invalid base64 camera image payload."}), 400
+
+    session_key = str(uuid.uuid4())[:8]
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_folder, exist_ok=True)
+
+    timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    img_filename = f"webcam_{session_key}_{timestamp_str}.jpg"
+    img_path = os.path.join(upload_folder, img_filename)
+
+    with open(img_path, "wb") as f:
+        f.write(image_bytes)
+
+    db = get_db()
+    students_master = db.get_all_master_students()
+    if not students_master:
+        return jsonify({"success": False, "error": "No master student roster found in database."}), 400
+
+    students = [{"index": s["student_index"], "name": s["student_name"]} for s in students_master]
+
+    from app.services.cv_engine import CVEngine
+    cv_engine = CVEngine(upload_folder, current_app.config)
+
+    try:
+        step_images, results, faces_cnt = cv_engine.process_and_analyze(
+            image_path=img_path,
+            students=students,
+            session_prefix=session_key,
+            signature_ratio=float(data.get("signature_ratio", 0.60)),
+            threshold_val=int(data.get("threshold_val", 127)),
+            pixel_threshold=int(data.get("pixel_threshold", 100))
+        )
+
+        session_id = db.save_session_results(
+            session_key=session_key,
+            title=f"Webcam Live Scan - {timestamp_str}",
+            date_str=timestamp_str,
+            step_images=step_images,
+            results=results,
+            faces_detected=faces_cnt
+        )
+
+        return jsonify({
+            "success": True,
+            "session_id": session_id,
+            "session_key": session_key,
+            "redirect_url": f"/results/{session_id}"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Live Scanner processing error: {str(e)}"}), 500
+
+
 @api_bp.route("/records/<int:record_id>/toggle", methods=["POST"])
 def toggle_record(record_id):
-    """Manually override attendance record status (Present/Absent)"""
     db = get_db()
     updated_info = db.toggle_record_status(record_id)
     if not updated_info:
@@ -112,21 +177,59 @@ def toggle_record(record_id):
     return jsonify({"success": True, "data": updated_info})
 
 
+# --- Roster CRUD Endpoints ---
+@api_bp.route("/students/add", methods=["POST"])
+def add_student():
+    data = request.get_json() or request.form
+    idx = data.get("index", "").strip()
+    name = data.get("name", "").strip()
+    batch = data.get("batch", "batch_2016_1").strip()
+    email = data.get("email", "").strip()
+
+    if not idx or not name:
+        return jsonify({"success": False, "error": "Student index and name are required."}), 400
+
+    db = get_db()
+    ok, res = db.add_master_student(idx, name, batch, email)
+    if not ok:
+        return jsonify({"success": False, "error": res}), 400
+
+    return jsonify({"success": True, "student_id": res})
+
+
+@api_bp.route("/students/<int:student_id>/delete", methods=["POST"])
+def delete_student(student_id):
+    db = get_db()
+    db.delete_master_student(student_id)
+    return jsonify({"success": True})
+
+
+@api_bp.route("/students/export-xml", methods=["GET"])
+def export_roster_xml():
+    batch = request.args.get("batch", "batch_2016_1")
+    db = get_db()
+    xml_content = db.generate_roster_xml(batch)
+
+    return Response(
+        xml_content,
+        mimetype="application/xml",
+        headers={"Content-Disposition": f"attachment; filename=students_{batch}.xml"}
+    )
+
+
+# --- Multi-format Export Endpoints ---
 @api_bp.route("/sessions/<int:session_id>/export", methods=["GET"])
 def export_session_csv(session_id):
-    """Export attendance results for a session as CSV download"""
     db = get_db()
     session = db.get_session(session_id)
     if not session:
         return jsonify({"error": "Session not found"}), 404
 
     records = db.get_session_records(session_id)
-
     output = io.StringIO()
     writer = csv.writer(output)
 
     writer.writerow(["Index", "Student Name", "Status", "Raw Pixel Count", "Manually Overridden"])
-
     for r in records:
         writer.writerow([
             r["student_index"],
@@ -137,7 +240,6 @@ def export_session_csv(session_id):
         ])
 
     csv_data = output.getvalue()
-
     filename = f"Attendance_{session['date_str']}_{session['session_key']}.csv"
     return Response(
         csv_data,
@@ -146,9 +248,43 @@ def export_session_csv(session_id):
     )
 
 
-@api_bp.route("/analytics/stats", methods=["GET"])
-def get_analytics_stats():
-    """Retrieve JSON statistics for frontend charts"""
+@api_bp.route("/sessions/<int:session_id>/export/pdf", methods=["GET"])
+def export_session_pdf(session_id):
     db = get_db()
-    stats = db.get_analytics_summary()
-    return jsonify({"success": True, "data": stats})
+    session = db.get_session(session_id)
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+
+    records = db.get_session_records(session_id)
+    from app.services.cv_engine import CVEngine
+    cv_engine = CVEngine(current_app.config["UPLOAD_FOLDER"])
+
+    pdf_bytes = cv_engine.generate_pdf_report(session, records)
+    filename = f"Attendance_Report_{session['session_key']}.pdf"
+
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@api_bp.route("/sessions/<int:session_id>/export/excel", methods=["GET"])
+def export_session_excel(session_id):
+    db = get_db()
+    session = db.get_session(session_id)
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+
+    records = db.get_session_records(session_id)
+    from app.services.cv_engine import CVEngine
+    cv_engine = CVEngine(current_app.config["UPLOAD_FOLDER"])
+
+    excel_bytes = cv_engine.generate_excel_report(session, records)
+    filename = f"Attendance_Sheet_{session['session_key']}.xlsx"
+
+    return Response(
+        excel_bytes,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

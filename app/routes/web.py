@@ -28,6 +28,23 @@ def index():
     return render_template("index.html", recent_sessions=recent_sessions)
 
 
+@web_bp.route("/scanner")
+def scanner():
+    """WebRTC Live Camera Scanner View"""
+    db = get_db()
+    students = db.get_all_master_students()
+    return render_template("scanner.html", students=students)
+
+
+@web_bp.route("/students")
+def students():
+    """Student Roster & Batch Management CRUD View"""
+    db = get_db()
+    batch_filter = request.args.get("batch", "")
+    students_list = db.get_all_master_students(batch=batch_filter if batch_filter else None)
+    return render_template("students.html", students=students_list, selected_batch=batch_filter)
+
+
 @web_bp.route("/results/<session_id_or_key>")
 def results(session_id_or_key):
     """Session Details & Attendance Interactive Results View"""
