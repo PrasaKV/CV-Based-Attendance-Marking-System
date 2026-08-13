@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Overview - SAMS{% endblock %}
+
+{% block content %}
+<h1 class="header-title">System Analytics & Insights</h1>
+<p class="header-subtitle">Aggregate metrics across all processed attendance sessions.</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ summary.total_sessions }}</div>
+    <div class="stat-label">Total Sessions Executed</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ summary.total_markings }}</div>
+    <div class="stat-label">Total Student Markings</div>
+  </div>
+  <div class="stat-card" style="border-color: var(--present-border);">
+    <div class="stat-value" style="color: var(--present-color);">{{ summary.total_present }}</div>
+    <div class="stat-label">Total Present</div>
+  </div>
+  <div class="stat-card" style="border-color: var(--absent-border);">
+    <div class="stat-value" style="color: var(--absent-color);">{{ summary.total_absent }}</div>
+    <div class="stat-label">Total Absent</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color: var(--primary);">{{ summary.attendance_rate }}%</div>
+    <div class="stat-label">Overall Attendance Rate</div>
+  </div>
+</div>
+
+<section class="glass-card">
+  <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1.25rem;">Session Attendance Rate Comparison</h2>
+
+  {% if not summary.recent_trend %}
+    <p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">No session data available for chart generation.</p>
+  {% else %}
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+      {% for session in summary.recent_trend %}
+      {% set rate = (session.present_count / session.total_students * 100) if session.total_students > 0 else 0 %}
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.3rem;">
+          <span><strong>{{ session.title }}</strong> ({{ session.date_str }})</span>
+          <span><strong>{{ "%.1f"|format(rate) }}%</strong> ({{ session.present_count }}/{{ session.total_students }})</span>
+        </div>
+        <div style="width: 100%; height: 12px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+          <div style="width: {{ rate }}%; height: 100%; background: linear-gradient(90deg, #6366f1, #22c55e); transition: width 0.8s ease;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

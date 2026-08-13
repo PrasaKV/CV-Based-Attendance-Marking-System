@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{{ session.title }} - SAMS Results{% endblock %}
+
+{% block content %}
+<!-- Session Header & Quick Controls -->
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 class="header-title" style="margin-bottom: 0.2rem;">{{ session.title }}</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Session Key: <code>{{ session.session_key }}</code> | Date: {{ session.date_str }}</p>
+  </div>
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="{{ url_for('api.export_session_csv', session_id=session.id) }}" class="btn btn-secondary" style="padding: 0.65rem 1.2rem; font-size: 0.9rem;">
+      📥 Export CSV
+    </a>
+    <a href="{{ url_for('web.index') }}" class="btn" style="padding: 0.65rem 1.2rem; font-size: 0.9rem;">
+      ← Upload Another Sheet
+    </a>
+  </div>
+</div>
+
+<!-- Stats Counter Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">{{ session.total_students }}</div>
+    <div class="stat-label">Total Students Parsed</div>
+  </div>
+  <div class="stat-card" style="border-color: var(--present-border);">
+    <div class="stat-value" id="stat-present" style="color: var(--present-color);">{{ session.present_count }}</div>
+    <div class="stat-label">Present Count</div>
+  </div>
+  <div class="stat-card" style="border-color: var(--absent-border);">
+    <div class="stat-value" id="stat-absent" style="color: var(--absent-color);">{{ session.absent_count }}</div>
+    <div class="stat-label">Absent Count</div>
+  </div>
+  {% set rate = (session.present_count / session.total_students * 100) if session.total_students > 0 else 0 %}
+  <div class="stat-card">
+    <div class="stat-value" style="color: #a5b4fc;">{{ "%.1f"|format(rate) }}%</div>
+    <div class="stat-label">Attendance Rate</div>
+  </div>
+</div>
+
+<!-- Interactive Attendance Records Table -->
+<section class="glass-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+    <h2 style="font-size: 1.3rem; font-weight: 700;">Student Attendance Status</h2>
+    <input type="text" id="table-search" placeholder="🔍 Search student by name or index..." class="form-control" style="max-width: 300px; font-size: 0.88rem;">
+  </div>
+
+  <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+    💡 <em>Tip: Click any status badge (Present / Absent) to manually override attendance status. Click signature crop thumbnail to zoom.</em>
+  </p>
+
+  <div class="table-wrapper">
+    <table id="attendance-table">
+      <thead>
+        <tr>
+          <th>Student Index</th>
+          <th>Student Name</th>
+          <th>Status (Click to Toggle)</th>
+          <th>Ink Pixels</th>
+          <th>Signature Crop Crop</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td><strong>{{ r.student_index }}</strong></td>
+          <td>{{ r.student_name }}</td>
+          <td>
+            {% if r.status == 'Present' %}
+              <span class="status-badge present" data-record-id="{{ r.id }}" data-status="Present">✔ Present</span>
+            {% else %}
+              <span class="status-badge absent" data-record-id="{{ r.id }}" data-status="Absent">✖ Absent</span>
+            {% endif %}
+            {% if r.is_manually_overridden %}
+              <span style="font-size: 0.7rem; color: #fbbf24; background: rgba(251, 191, 36, 0.15); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">Overridden</span>
+            {% endif %}
+          </td>
+          <td><code>{{ r.pixel_count }} px</code></td>
+          <td>
+            {% if r.crop_image %}
+              <img src="{{ url_for('static', filename=r.crop_image) }}" alt="Crop" class="crop-thumb" title="Click to enlarge signature crop">
+            {% else %}
+              <span style="color: var(--text-muted); font-size: 0.8rem;">N/A</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Computer Vision Processing Debugger & Step Pipeline -->
+<section class="glass-card">
+  <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem;">Computer Vision Processing Pipeline</h2>
+
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-tab="annotated">1. Annotated Bounding Boxes</button>
+    <button class="tab-btn" data-tab="original">2. Original Upload</button>
+    <button class="tab-btn" data-tab="grayscale">3. Grayscale</button>
+    <button class="tab-btn" data-tab="binarized">4. Thresholded Binarization</button>
+  </div>
+
+  <div class="tab-content active" id="tab-annotated">
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">Original sheet overlaid with ROI bounding boxes and index tags (Green = Present, Red = Absent).</p>
+    <img src="{{ url_for('static', filename=session.annotated_image) }}" alt="Annotated Image" class="preview-img">
+  </div>
+
+  <div class="tab-content" id="tab-original">
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">Raw uploaded attendance sheet image.</p>
+    <img src="{{ url_for('static', filename=session.original_image) }}" alt="Original Image" class="preview-img">
+  </div>
+
+  <div class="tab-content" id="tab-grayscale">
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">Single-channel intensity map removing color variance.</p>
+    <img src="{{ url_for('static', filename=session.grayscale_image) }}" alt="Grayscale Image" class="preview-img">
+  </div>
+
+  <div class="tab-content" id="tab-binarized">
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">Inverted binary mask (white pixels represent student signature pen strokes).</p>
+    <img src="{{ url_for('static', filename=session.thresh_image) }}" alt="Binarized Threshold Image" class="preview-img">
+  </div>
+</section>
+
+<!-- Signature Zoom Modal -->
+<div class="modal" id="image-modal">
+  <img src="" alt="Enlarged Signature" class="modal-content" id="modal-img">
+</div>
+{% endblock %}

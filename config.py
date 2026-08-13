@@ -1,11 +1,22 @@
 import os
 
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     """Base configuration"""
-    UPLOAD_FOLDER = os.path.join("static", "uploads")
-    DATABASE = "attendance.db"
-    SECRET_KEY = "your-secret-key-here"
+    SECRET_KEY = os.environ.get("SECRET_KEY", "sams-secret-key-super-secure-2026")
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads")
+    DATABASE = os.path.join(BASE_DIR, "attendance.db")
+    
+    # Computer Vision Engine Defaults
+    CV_SIGNATURE_START_RATIO = 0.60
+    CV_THRESHOLD_VALUE = 127
+    CV_MEDIAN_BLUR_SIZE = 5
+    CV_PRESENT_PIXEL_THRESHOLD = 100
+    CV_USE_OTSU = False
+
+    ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+    ALLOWED_DATA_EXTENSIONS = {".xml", ".json"}
 
 
 class DevelopmentConfig(Config):
@@ -24,7 +35,7 @@ class TestingConfig(Config):
     """Testing configuration"""
     DEBUG = True
     TESTING = True
-    DATABASE = "test_attendance.db"
+    DATABASE = os.path.join(BASE_DIR, "test_attendance.db")
 
 
 config = {
