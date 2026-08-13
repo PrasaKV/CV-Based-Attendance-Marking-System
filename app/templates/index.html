@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SAMS Attendance Marking{% endblock %}
+
+{% block content %}
+<section class="glass-card">
+  <h1 class="header-title">Automated Attendance Marking</h1>
+  <p class="header-subtitle">Upload the signed attendance sheet along with the student roster file (XML or JSON) to automatically analyze signatures and mark attendance.</p>
+
+  <div id="upload-error" style="display: none; padding: 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #f87171; margin-bottom: 1.5rem; font-weight: 500;"></div>
+
+  <form id="upload-form" enctype="multipart/form-data">
+    
+    <!-- Drag & Drop Zone Grid -->
+    <div class="dropzone-container">
+      
+      <!-- Image Dropzone -->
+      <div class="dropzone" id="dropzone-image">
+        <div class="dropzone-icon">📷</div>
+        <div class="dropzone-title">Signing Sheet Image</div>
+        <div class="dropzone-hint">Drag & drop PNG, JPG, or WEBP image here, or click to browse</div>
+        <input type="file" name="image" id="input-image" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;" required>
+        <span class="file-preview-badge" id="preview-image" style="display: none;"></span>
+      </div>
+
+      <!-- Student XML / JSON Dropzone -->
+      <div class="dropzone" id="dropzone-xml">
+        <div class="dropzone-icon">📄</div>
+        <div class="dropzone-title">Student Information File</div>
+        <div class="dropzone-hint">Drag & drop XML or JSON student list file here, or click to browse</div>
+        <input type="file" name="xml" id="input-xml" accept=".xml,.json" style="display: none;" required>
+        <span class="file-preview-badge" id="preview-xml" style="display: none;"></span>
+      </div>
+
+    </div>
+
+    <!-- CV Parameter Tuning Accordion -->
+    <div class="accordion">
+      <div class="accordion-header" onclick="document.getElementById('accordion-body').style.display = document.getElementById('accordion-body').style.display === 'none' ? 'grid' : 'none'">
+        <span>⚙️ Computer Vision Processing Parameters (Advanced Options)</span>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">Click to toggle</span>
+      </div>
+      <div class="accordion-body" id="accordion-body" style="display: none;">
+        
+        <div class="form-field">
+          <label for="signature_ratio">Signature ROI Start Ratio</label>
+          <input type="number" step="0.05" min="0.1" max="0.9" name="signature_ratio" id="signature_ratio" value="0.60" class="form-control">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Horizontal offset ratio where signature column begins (0.60 = 60%).</span>
+        </div>
+
+        <div class="form-field">
+          <label for="pixel_threshold">Present Threshold (Pixels)</label>
+          <input type="number" min="10" max="1000" name="pixel_threshold" id="pixel_threshold" value="100" class="form-control">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Minimum ink pixels required to count student as Present.</span>
+        </div>
+
+        <div class="form-field">
+          <label for="threshold_val">Binarization Cutoff Threshold</label>
+          <input type="number" min="0" max="255" name="threshold_val" id="threshold_val" value="127" class="form-control">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Grayscale threshold level (0-255).</span>
+        </div>
+
+        <div class="form-field" style="justify-content: center;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #fff;">
+            <input type="checkbox" name="use_otsu" value="true" style="width: 18px; height: 18px; accent-color: var(--primary);">
+            Use Adaptive Otsu Binarization
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div style="text-align: right;">
+      <button type="submit" class="btn" id="submit-btn">
+        <span>⚡ Process Attendance</span>
+      </button>
+    </div>
+
+  </form>
+</section>
+
+{% if recent_sessions %}
+<section class="glass-card">
+  <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem;">Recent Attendance Sessions</h2>
+  
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Date / Session</th>
+          <th>Total Students</th>
+          <th>Present</th>
+          <th>Absent</th>
+          <th>Rate</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in recent_sessions %}
+        {% set rate = (session.present_count / session.total_students * 100) if session.total_students > 0 else 0 %}
+        <tr>
+          <td>
+            <strong>{{ session.title }}</strong><br>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Key: {{ session.session_key }} | {{ session.created_at[:16] }}</span>
+          </td>
+          <td>{{ session.total_students }}</td>
+          <td><span style="color: var(--present-color); font-weight: 600;">{{ session.present_count }}</span></td>
+          <td><span style="color: var(--absent-color); font-weight: 600;">{{ session.absent_count }}</span></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div style="width: 60px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                <div style="width: {{ rate }}%; height: 100%; background: var(--primary);"></div>
+              </div>
+              <span style="font-size: 0.85rem;">{{ "%.0f"|format(rate) }}%</span>
+            </div>
+          </td>
+          <td>
+            <a href="{{ url_for('web.results', session_id_or_key=session.id) }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">View Results</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

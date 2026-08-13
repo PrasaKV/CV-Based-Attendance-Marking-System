@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SAMS - Computer Vision Attendance System{% endblock %}</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+
+  <!-- Top Glassmorphic Navigation -->
+  <nav class="navbar">
+    <a href="{{ url_for('web.index') }}" class="nav-brand">
+      <div class="brand-icon">S</div>
+      <span>SAMS CV Engine</span>
+    </a>
+    
+    <ul class="nav-links">
+      <li><a href="{{ url_for('web.index') }}" class="nav-link {% if request.endpoint == 'web.index' %}active{% endif %}">Dashboard</a></li>
+      <li><a href="{{ url_for('web.history') }}" class="nav-link {% if request.endpoint == 'web.history' %}active{% endif %}">Sessions History</a></li>
+      <li><a href="{{ url_for('web.analytics') }}" class="nav-link {% if request.endpoint == 'web.analytics' %}active{% endif %}">Analytics</a></li>
+    </ul>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="glass-card" style="border-color: rgba(239, 68, 68, 0.4); padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+            <p style="color: #f87171; font-weight: 500;">{{ message }}</p>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

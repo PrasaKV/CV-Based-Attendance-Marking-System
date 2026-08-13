@@ -20,20 +20,10 @@ def create_app(config_name="development"):
     # Register blueprints
     app.register_blueprint(attendance_bp)
     
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found(error):
-        return {"error": "Resource not found"}, 404
-    
-    @app.errorhandler(500)
-    def server_error(error):
-        return {"error": "Internal server error"}, 500
-    
     return app
 
 
 if __name__ == "__main__":
-    app = create_app(os.getenv("FLASK_ENV", "development"))
     app.run(
         host="0.0.0.0",
         port=5000,
