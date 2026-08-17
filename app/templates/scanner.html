@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Live Camera Scanner - SAMS v2.0{% endblock %}
+
+{% block content %}
+<section class="glass-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 class="header-title" style="margin-bottom: 0.2rem;">Live Camera Attendance Scanner</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Position the printed signing sheet in front of your camera and click capture to analyze signatures in real-time.</p>
+    </div>
+    <a href="{{ url_for('web.index') }}" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.88rem;">← File Upload Mode</a>
+  </div>
+
+  <div id="scanner-alert" style="display: none; padding: 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #f87171; margin-bottom: 1.5rem; font-weight: 500;"></div>
+
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;" class="scanner-container">
+    
+    <!-- Camera Viewport Container -->
+    <div style="position: relative; background: #000; border-radius: var(--border-radius); overflow: hidden; border: 1px solid var(--card-border); min-height: 400px; display: flex; align-items: center; justify-content: center;">
+      
+      <video id="webcam-video" autoplay playsinline style="width: 100%; height: auto; max-height: 520px; object-fit: contain;"></video>
+      <canvas id="snapshot-canvas" style="display: none;"></canvas>
+
+      <!-- Alignment Guide Overlay Box -->
+      <div style="position: absolute; top: 10%; left: 10%; right: 10%; bottom: 10%; border: 2px dashed rgba(34, 197, 94, 0.7); border-radius: 8px; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 10px;">
+        <span style="font-size: 0.75rem; color: #4ade80; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; width: fit-content;">Align Attendance Sheet Within Box</span>
+        <span style="font-size: 0.75rem; color: #4ade80; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; width: fit-content; align-self: flex-end;">Signature Column ➔</span>
+      </div>
+
+    </div>
+
+    <!-- Scanner Controls Panel -->
+    <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 1.5rem; background: rgba(15, 23, 42, 0.4); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--card-border);">
+      
+      <div>
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: #fff;">Camera Settings</h3>
+        
+        <div class="form-field" style="margin-bottom: 1.2rem;">
+          <label for="camera-select">Camera Source</label>
+          <select id="camera-select" class="form-control">
+            <option value="">Detecting cameras...</option>
+          </select>
+        </div>
+
+        <div class="form-field" style="margin-bottom: 1.2rem;">
+          <label for="webcam-ratio">Signature Start Ratio</label>
+          <input type="number" step="0.05" min="0.1" max="0.9" id="webcam-ratio" value="0.60" class="form-control">
+        </div>
+
+        <div class="form-field" style="margin-bottom: 1.2rem;">
+          <label for="webcam-thresh">Ink Pixel Sensitivity</label>
+          <input type="number" min="10" max="1000" id="webcam-thresh" value="100" class="form-control">
+        </div>
+
+        <div style="padding: 0.8rem; background: rgba(99, 102, 241, 0.1); border-radius: 8px; border: 1px solid var(--primary-glow);">
+          <span style="font-size: 0.82rem; color: #a5b4fc;">Active Roster: <strong>{{ students|length }} Students</strong> loaded from master roster.</span>
+        </div>
+      </div>
+
+      <div>
+        <button id="capture-btn" class="btn" style="width: 100%; padding: 1rem; font-size: 1.05rem;">
+          📸 Capture & Analyze Sheet
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+{% endblock %}

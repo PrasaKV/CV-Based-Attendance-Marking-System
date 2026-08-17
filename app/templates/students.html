@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Roster & Student Manager - SAMS v2.0{% endblock %}
+
+{% block content %}
+<section class="glass-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 class="header-title" style="margin-bottom: 0.2rem;">Master Student Roster Manager</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Manage student directories, batch assignments, and generate roster XML files for printing attendance sheets.</p>
+    </div>
+    
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('api.export_roster_xml', batch=selected_batch or 'batch_2016_1') }}" class="btn btn-secondary" style="padding: 0.6rem 1.1rem; font-size: 0.88rem;">
+        📥 Download XML Roster
+      </a>
+      <button class="btn" onclick="document.getElementById('add-student-modal').classList.add('active')" style="padding: 0.6rem 1.1rem; font-size: 0.88rem;">
+        ➕ Add New Student
+      </button>
+    </div>
+  </div>
+
+  <div id="roster-alert" style="display: none; padding: 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #f87171; margin-bottom: 1.5rem; font-weight: 500;"></div>
+
+  <!-- Batch Filter Tabs -->
+  <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem;">
+    <a href="{{ url_for('web.students') }}" class="btn btn-secondary {% if not selected_batch %}active{% endif %}" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">All Batches</a>
+    <a href="{{ url_for('web.students', batch='batch_2016_1') }}" class="btn btn-secondary {% if selected_batch == 'batch_2016_1' %}active{% endif %}" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">Batch 2016_1</a>
+  </div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Student Index</th>
+          <th>Student Name</th>
+          <th>Batch</th>
+          <th>Email Address</th>
+          <th>Created At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr id="student-row-{{ s.id }}">
+          <td><strong>{{ s.student_index }}</strong></td>
+          <td>{{ s.student_name }}</td>
+          <td><span style="font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); padding: 3px 8px; border-radius: 6px; color: #a5b4fc;">{{ s.batch }}</span></td>
+          <td>{{ s.email or '-' }}</td>
+          <td style="color: var(--text-muted); font-size: 0.85rem;">{{ s.created_at[:10] }}</td>
+          <td>
+            <button class="btn btn-secondary btn-delete-student" data-student-id="{{ s.id }}" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; color: #f87171;">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Add Student Modal Dialog -->
+<div class="modal" id="add-student-modal">
+  <div class="glass-card" style="width: 100%; max-width: 480px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h2 style="font-size: 1.3rem; font-weight: 700;">Add Student to Master Roster</h2>
+      <span style="cursor: pointer; font-size: 1.4rem; color: var(--text-muted);" onclick="document.getElementById('add-student-modal').classList.remove('active')">&times;</span>
+    </div>
+
+    <form id="add-student-form">
+      <div class="form-field" style="margin-bottom: 1rem;">
+        <label for="new-index">Student Index Number *</label>
+        <input type="text" id="new-index" name="index" required class="form-control" placeholder="e.g. 10009307">
+      </div>
+
+      <div class="form-field" style="margin-bottom: 1rem;">
+        <label for="new-name">Full Name *</label>
+        <input type="text" id="new-name" name="name" required class="form-control" placeholder="e.g. Kasun Kalhara">
+      </div>
+
+      <div class="form-field" style="margin-bottom: 1rem;">
+        <label for="new-batch">Batch Name</label>
+        <input type="text" id="new-batch" name="batch" value="batch_2016_1" class="form-control">
+      </div>
+
+      <div class="form-field" style="margin-bottom: 1.5rem;">
+        <label for="new-email">Email Address</label>
+        <input type="email" id="new-email" name="email" class="form-control" placeholder="student@nsbm.lk">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-student-modal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn">Save Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

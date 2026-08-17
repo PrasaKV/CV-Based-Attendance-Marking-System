@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Sessions History - SAMS{% endblock %}
+
+{% block content %}
+<section class="glass-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 class="header-title" style="margin-bottom: 0.2rem;">Sessions Archive</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Historical view of all processed attendance sheets.</p>
+    </div>
+    <a href="{{ url_for('web.index') }}" class="btn">⚡ Process New Sheet</a>
+  </div>
+
+  {% if not sessions %}
+    <p style="color: var(--text-muted); text-align: center; padding: 2rem;">No historical sessions recorded yet.</p>
+  {% else %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Session Key</th>
+            <th>Title / Date</th>
+            <th>Total Students</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Attendance Rate</th>
+            <th>Timestamp</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sessions %}
+          {% set rate = (s.present_count / s.total_students * 100) if s.total_students > 0 else 0 %}
+          <tr>
+            <td><code>{{ s.session_key }}</code></td>
+            <td><strong>{{ s.title }}</strong></td>
+            <td>{{ s.total_students }}</td>
+            <td><span style="color: var(--present-color); font-weight: 600;">{{ s.present_count }}</span></td>
+            <td><span style="color: var(--absent-color); font-weight: 600;">{{ s.absent_count }}</span></td>
+            <td>
+              <span style="font-weight: 600; color: #a5b4fc;">{{ "%.1f"|format(rate) }}%</span>
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ s.created_at }}</td>
+            <td>
+              <div style="display: flex; gap: 0.4rem;">
+                <a href="{{ url_for('web.results', session_id_or_key=s.id) }}" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;">View</a>
+                <a href="{{ url_for('api.export_session_csv', session_id=s.id) }}" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;">CSV</a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
