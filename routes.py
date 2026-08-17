@@ -16,7 +16,7 @@ attendance_bp = Blueprint(
 
 @attendance_bp.route("/", methods=["GET"])
 def index():
-    return redirect(url_for("web.index"))
+    return render_template("index.html")
 
 @attendance_bp.route("/upload", methods=["POST"])
 def upload():
