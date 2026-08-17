@@ -5,7 +5,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 class Config:
     """Base configuration"""
     SECRET_KEY = os.environ.get("SECRET_KEY", "sams-secret-key-super-secure-2026")
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads")
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
     DATABASE = os.path.join(BASE_DIR, "attendance.db")
     
     # Computer Vision Engine Defaults

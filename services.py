@@ -12,10 +12,10 @@ from config import Config
 class AttendanceManager:
     """Manages attendance marking and image processing"""
     
-    SIGNATURE_START_RATIO = 0.6
+    SIGNATURE_START_RATIO = 0.68
     THRESHOLD_VALUE = 127
     MEDIAN_BLUR_SIZE = 5
-    PRESENT_PIXEL_THRESHOLD = 100
+    PRESENT_PIXEL_THRESHOLD = 1000
 
     def __init__(self, db_name=None):
         self.db_name = db_name or Config.DATABASE
@@ -104,11 +104,19 @@ class AttendanceManager:
             x_start = int(
                 width * self.SIGNATURE_START_RATIO
             )
-            x_end = width
+            x_end = int(width * 0.82)
+            
+            # Shrink ROI to avoid table borders being counted as present pixels
+            margin_y = 10
+            margin_x = 10
+            safe_y_start = min(y_start + margin_y, y_end)
+            safe_y_end = max(y_end - margin_y, y_start)
+            safe_x_start = min(x_start + margin_x, x_end)
+            safe_x_end = max(x_end - margin_x, x_start)
 
             signature_roi = binarized_img[
-                y_start:y_end,
-                x_start:x_end
+                safe_y_start:safe_y_end,
+                safe_x_start:safe_x_end
             ]
 
             pixel_count = cv2.countNonZero(

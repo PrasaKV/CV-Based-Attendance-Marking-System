@@ -36,8 +36,8 @@ class SignatureSheetProcessor:
 
     def _binarize(self, gray_img):
         smoothed = cv2.medianBlur(gray_img, self.blur_kernel)
-        _, thresholded = cv2.threshold(
-            smoothed, self.threshold, 255, cv2.THRESH_BINARY_INV
+        thresholded = cv2.adaptiveThreshold(
+            smoothed, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 10
         )
         return thresholded
 
