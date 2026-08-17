@@ -5,6 +5,7 @@ import cv2
 import sqlite3
 import os
 import re
+import numpy as np
 from config import Config
 
 
@@ -62,15 +63,43 @@ class AttendanceManager:
             return []
 
         height, width = binarized_img.shape
-        row_height = height // len(students)
+        
+        # Detect horizontal lines
+        kernel_len = width // 100
+        horiz_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_len, 1))
+        
+        image_horizontal = cv2.erode(binarized_img, horiz_kernel, iterations=3)
+        horizontal_lines = cv2.dilate(image_horizontal, horiz_kernel, iterations=3)
+        
+        contours, _ = cv2.findContours(horizontal_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        y_coords = []
+        for c in contours:
+            x, y, w, h = cv2.boundingRect(c)
+            if w > width * 0.3:
+                y_coords.append(y)
+                
+        y_coords = sorted(list(set(y_coords)))
+        
+        filtered_y = []
+        for y in y_coords:
+            if not filtered_y or y - filtered_y[-1] > 10:
+                filtered_y.append(y)
+                
+        num_students = len(students)
+        if len(filtered_y) >= num_students + 1:
+            row_boundaries = filtered_y[-(num_students + 1):]
+        else:
+            # Fallback to naive splitting
+            row_boundaries = [i * (height // num_students) for i in range(num_students + 1)]
 
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
         results = []
 
         for i, student in enumerate(students):
-            y_start = i * row_height
-            y_end = (i + 1) * row_height
+            y_start = row_boundaries[i]
+            y_end = row_boundaries[i + 1]
 
             x_start = int(
                 width * self.SIGNATURE_START_RATIO
