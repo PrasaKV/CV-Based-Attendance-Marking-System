@@ -1,45 +1,609 @@
+Here’s a more polished **SAMS upload page** that matches the redesigned results page. It includes a modern header, upload cards, drag-and-drop areas, file-name preview, validation, and a processing state.
+
+```html id="p3k9x2"
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<title>SAMS - Upload</title>
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+
+		<title>SAMS - Upload Attendance</title>
+
 		<link
 			rel="stylesheet"
 			href="{{ url_for('static', filename='style.css') }}"
 		/>
+
+		<link
+			rel="preconnect"
+			href="https://fonts.googleapis.com"
+		/>
+
+		<link
+			rel="preconnect"
+			href="https://fonts.gstatic.com"
+			crossorigin
+		/>
+
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+			rel="stylesheet"
+		/>
+
+		<style>
+			.upload-page {
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 40px 20px;
+			}
+
+			.upload-container {
+				width: min(760px, 100%);
+			}
+
+			/* Header */
+
+			.upload-header {
+				text-align: center;
+				margin-bottom: 28px;
+			}
+
+			.logo {
+				width: 64px;
+				height: 64px;
+				margin: 0 auto 18px;
+
+				display: flex;
+				align-items: center;
+				justify-content: center;
+
+				border-radius: 18px;
+
+				background: linear-gradient(
+					135deg,
+					#5966d8,
+					#707bea
+				);
+
+				color: white;
+
+				font-size: 27px;
+				font-weight: 800;
+
+				box-shadow:
+					0 10px 25px rgba(89, 102, 216, 0.25);
+			}
+
+			.upload-header h1 {
+				font-size: 30px;
+				margin-bottom: 10px;
+			}
+
+			.upload-header p {
+				max-width: 560px;
+				margin: auto;
+
+				font-size: 14px;
+				line-height: 1.7;
+
+				color: #8992a3;
+			}
+
+			/* Main Card */
+
+			.upload-card {
+				background: #ffffff;
+
+				border: 1px solid #e8edf4;
+
+				border-radius: 20px;
+
+				padding: 30px;
+
+				box-shadow:
+					0 10px 40px rgba(31, 41, 55, 0.07);
+			}
+
+			/* Upload Items */
+
+			.upload-items {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 18px;
+
+				margin-bottom: 24px;
+			}
+
+			.upload-box {
+				position: relative;
+
+				border: 1.5px dashed #d6ddea;
+
+				border-radius: 15px;
+
+				padding: 24px 18px;
+
+				text-align: center;
+
+				background: #fafbfd;
+
+				cursor: pointer;
+
+				transition: all 0.2s ease;
+			}
+
+			.upload-box:hover {
+				border-color: #5966d8;
+
+				background: #f7f8ff;
+
+				transform: translateY(-2px);
+			}
+
+			.upload-box.active {
+				border-color: #5966d8;
+
+				background: #f4f5ff;
+			}
+
+			.upload-icon {
+				width: 52px;
+				height: 52px;
+
+				margin: 0 auto 14px;
+
+				display: flex;
+				align-items: center;
+				justify-content: center;
+
+				border-radius: 14px;
+
+				background: #eef2ff;
+
+				color: #5966d8;
+
+				font-size: 23px;
+				font-weight: 700;
+			}
+
+			.upload-box h3 {
+				font-size: 15px;
+
+				margin-bottom: 6px;
+
+				color: #263247;
+			}
+
+			.upload-box p {
+				font-size: 12px;
+
+				color: #929aaa;
+
+				margin-bottom: 14px;
+			}
+
+			.file-name {
+				display: block;
+
+				min-height: 18px;
+
+				font-size: 12px;
+
+				font-weight: 600;
+
+				color: #5966d8;
+
+				overflow: hidden;
+
+				text-overflow: ellipsis;
+
+				white-space: nowrap;
+			}
+
+			/* Hidden Input */
+
+			.file-input {
+				position: absolute;
+
+				width: 1px;
+				height: 1px;
+
+				opacity: 0;
+
+				pointer-events: none;
+			}
+
+			/* Requirements */
+
+			.requirements {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+
+				padding: 12px 14px;
+
+				margin-bottom: 22px;
+
+				border-radius: 10px;
+
+				background: #f8fafc;
+
+				color: #7d8798;
+
+				font-size: 12px;
+			}
+
+			.requirements-icon {
+				color: #5966d8;
+
+				font-weight: 700;
+			}
+
+			/* Submit Button */
+
+			.process-btn {
+				width: 100%;
+
+				min-height: 50px;
+
+				border: none;
+
+				border-radius: 11px;
+
+				background: #5966d8;
+
+				color: white;
+
+				font-family: inherit;
+
+				font-size: 14px;
+
+				font-weight: 700;
+
+				cursor: pointer;
+
+				transition: all 0.2s ease;
+			}
+
+			.process-btn:hover {
+				background: #4c59c9;
+
+				transform: translateY(-1px);
+
+				box-shadow:
+					0 8px 20px rgba(89, 102, 216, 0.22);
+			}
+
+			.process-btn:disabled {
+				background: #aeb5c9;
+
+				cursor: not-allowed;
+
+				transform: none;
+
+				box-shadow: none;
+			}
+
+			/* Footer */
+
+			.upload-footer {
+				text-align: center;
+
+				margin-top: 20px;
+
+				font-size: 12px;
+
+				color: #9aa2b1;
+			}
+
+			/* Loading */
+
+			.spinner {
+				display: inline-block;
+
+				width: 16px;
+				height: 16px;
+
+				margin-right: 8px;
+
+				border: 2px solid rgba(255, 255, 255, 0.4);
+
+				border-top-color: white;
+
+				border-radius: 50%;
+
+				vertical-align: -3px;
+
+				animation: spin 0.7s linear infinite;
+			}
+
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+
+			/* Responsive */
+
+			@media (max-width: 650px) {
+				.upload-page {
+					padding: 25px 14px;
+				}
+
+				.upload-card {
+					padding: 20px;
+				}
+
+				.upload-items {
+					grid-template-columns: 1fr;
+				}
+
+				.upload-header h1 {
+					font-size: 24px;
+				}
+
+				.logo {
+					width: 56px;
+					height: 56px;
+					font-size: 23px;
+				}
+			}
+		</style>
 	</head>
+
 	<body>
-		<div class="container">
-			<h1>Student Attendance Management System</h1>
-			<p>
-				Upload the signing sheet image and the student info.xml to process
-				attendance.
-			</p>
 
-			<form
-				action="/upload"
-				method="POST"
-				enctype="multipart/form-data"
-				class="upload-form"
-			>
-				<div class="form-group">
-					<label for="image">Signing Sheet Image (.png, .jpg):</label>
-					<input
-						type="file"
-						name="image"
-						id="image"
-						accept="image/*"
-						required
-					/>
-				</div>
+		<main class="upload-page">
 
-				<div class="form-group">
-					<label for="xml">Student Data (.xml):</label>
-					<input type="file" name="xml" id="xml" accept=".xml" required />
-				</div>
+			<div class="upload-container">
 
-				<button type="submit" class="btn">Process Attendance</button>
-			</form>
-		</div>
+				<!-- Header -->
+
+				<header class="upload-header">
+
+					<div class="logo">
+						S
+					</div>
+
+					<h1>
+						Student Attendance
+						<br />
+						Management System
+					</h1>
+
+					<p>
+						Upload your signing sheet and student data file.
+						SAMS will analyze the attendance sheet and generate
+						the attendance results automatically.
+					</p>
+
+				</header>
+
+
+				<!-- Upload Card -->
+
+				<section class="upload-card">
+
+					<form
+						action="/upload"
+						method="POST"
+						enctype="multipart/form-data"
+						class="upload-form"
+						id="uploadForm"
+					>
+
+						<div class="upload-items">
+
+							<!-- Image Upload -->
+
+							<label
+								class="upload-box"
+								for="image"
+								id="imageBox"
+							>
+
+								<div class="upload-icon">
+									↑
+								</div>
+
+								<h3>
+									Signing Sheet
+								</h3>
+
+								<p>
+									Upload PNG or JPG image
+								</p>
+
+								<span
+									class="file-name"
+									id="imageName"
+								>
+									Choose an image
+								</span>
+
+								<input
+									type="file"
+									name="image"
+									id="image"
+									class="file-input"
+									accept="image/png,image/jpeg,image/jpg"
+									required
+								/>
+
+							</label>
+
+
+							<!-- XML Upload -->
+
+							<label
+								class="upload-box"
+								for="xml"
+								id="xmlBox"
+							>
+
+								<div class="upload-icon">
+									XML
+								</div>
+
+								<h3>
+									Student Data
+								</h3>
+
+								<p>
+									Upload student information XML
+								</p>
+
+								<span
+									class="file-name"
+									id="xmlName"
+								>
+									Choose XML file
+								</span>
+
+								<input
+									type="file"
+									name="xml"
+									id="xml"
+									class="file-input"
+									accept=".xml,text/xml"
+									required
+								/>
+
+							</label>
+
+						</div>
+
+
+						<!-- Requirements -->
+
+						<div class="requirements">
+
+							<span class="requirements-icon">
+								ⓘ
+							</span>
+
+							<span>
+								Supported files: JPG, JPEG, PNG and XML.
+								Make sure both files belong to the same
+								attendance session.
+							</span>
+
+						</div>
+
+
+						<!-- Submit -->
+
+						<button
+							type="submit"
+							class="process-btn"
+							id="processBtn"
+						>
+							Process Attendance
+						</button>
+
+					</form>
+
+				</section>
+
+
+				<footer class="upload-footer">
+					SAMS · Student Attendance Management System
+				</footer>
+
+			</div>
+
+		</main>
+
+
+		<script>
+
+			const imageInput =
+				document.getElementById("image");
+
+			const xmlInput =
+				document.getElementById("xml");
+
+			const imageName =
+				document.getElementById("imageName");
+
+			const xmlName =
+				document.getElementById("xmlName");
+
+			const imageBox =
+				document.getElementById("imageBox");
+
+			const xmlBox =
+				document.getElementById("xmlBox");
+
+			const form =
+				document.getElementById("uploadForm");
+
+			const processBtn =
+				document.getElementById("processBtn");
+
+
+			/* Image selection */
+
+			imageInput.addEventListener("change", function () {
+
+				if (this.files.length > 0) {
+
+					imageName.textContent =
+						this.files[0].name;
+
+					imageBox.classList.add("active");
+
+				} else {
+
+					imageName.textContent =
+						"Choose an image";
+
+					imageBox.classList.remove("active");
+				}
+
+			});
+
+
+			/* XML selection */
+
+			xmlInput.addEventListener("change", function () {
+
+				if (this.files.length > 0) {
+
+					xmlName.textContent =
+						this.files[0].name;
+
+					xmlBox.classList.add("active");
+
+				} else {
+
+					xmlName.textContent =
+						"Choose XML file";
+
+					xmlBox.classList.remove("active");
+				}
+
+			});
+
+
+			/* Processing state */
+
+			form.addEventListener("submit", function () {
+
+				processBtn.disabled = true;
+
+				processBtn.innerHTML =
+					'<span class="spinner"></span> Processing Attendance...';
+
+			});
+
+		</script>
+
 	</body>
 </html>
+```
