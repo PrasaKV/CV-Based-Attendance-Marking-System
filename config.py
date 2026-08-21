@@ -10,13 +10,13 @@ class Config:
     
     # Computer Vision Engine Defaults
     CV_SIGNATURE_START_RATIO = 0.60
-    CV_THRESHOLD_VALUE = 1276
+    CV_THRESHOLD_VALUE = 127
     CV_MEDIAN_BLUR_SIZE = 5
     CV_PRESENT_PIXEL_THRESHOLD = 100
     CV_USE_OTSU = False
 
     ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
-    ALLOWED_DATA_EXTENSIONS = {".xml", ".json"}
+    ALLOWED_DATA_EXTENSIONS = {".xml", ".json", ".csv", ".xlsx", ".xls"}
 
 
 class DevelopmentConfig(Config):

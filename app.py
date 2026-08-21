@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request
 
-from attendance_core import AttendanceService
+from attendance_service import AttendanceService
 
 UPLOAD_DIR = "static/uploads"
 
@@ -11,7 +11,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 service = AttendanceService()
 
-/// save 
+# save helper
 def _save_upload(file_storage):
     dest = os.path.join(app.config["UPLOAD_FOLDER"], file_storage.filename)
     file_storage.save(dest)

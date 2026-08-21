@@ -42,7 +42,7 @@ def process_upload():
         return jsonify({"success": False, "error": "Invalid image format. Allowed: PNG, JPG, JPEG, WEBP"}), 400
 
     if not allowed_file(student_file.filename, current_app.config["ALLOWED_DATA_EXTENSIONS"]):
-        return jsonify({"success": False, "error": "Invalid student info format. Allowed: XML, JSON"}), 400
+        return jsonify({"success": False, "error": "Invalid student info format. Allowed: XML, JSON, CSV, XLSX"}), 400
 
     signature_ratio = float(request.form.get("signature_ratio", current_app.config["CV_SIGNATURE_START_RATIO"]))
     threshold_val = int(request.form.get("threshold_val", current_app.config["CV_THRESHOLD_VALUE"]))
@@ -251,7 +251,6 @@ def export_session_csv(session_id):
 @api_bp.route("/sessions/<int:session_id>/export/pdf", methods=["GET"])
 def export_session_pdf(session_id):
     db = get_db()
-<<<<<<< HEAD
     session = db.get_session(session_id)
     if not session:
         return jsonify({"error": "Session not found"}), 404
@@ -289,7 +288,12 @@ def export_session_excel(session_id):
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-=======
+
+
+@api_bp.route("/analytics", methods=["GET"])
+def get_analytics():
+    """Get overall analytics summary"""
+    db = get_db()
     stats = db.get_analytics_summary()
     return jsonify({"success": True, "data": stats})
 
@@ -545,4 +549,3 @@ def get_session_summary(session_id):
             "title": session.get("title")
         }
     })
->>>>>>> df323ea2de518a15290d644315f979396912730a

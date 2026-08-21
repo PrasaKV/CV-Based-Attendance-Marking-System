@@ -274,7 +274,6 @@ class DatabaseManager:
             "recent_trend": recent_trend
         }
 
-<<<<<<< HEAD
     # --- Student Master CRUD methods ---
     def get_all_master_students(self, batch=None):
         conn = self.get_connection()
@@ -283,7 +282,56 @@ class DatabaseManager:
             cursor.execute("SELECT * FROM master_students WHERE batch = ? ORDER BY student_index ASC", (batch,))
         else:
             cursor.execute("SELECT * FROM master_students ORDER BY student_index ASC")
-=======
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def add_master_student(self, student_index, student_name, batch="batch_2016_1", email=""):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO master_students (student_index, student_name, batch, email)
+                VALUES (?, ?, ?, ?)
+            """, (student_index.strip(), student_name.strip(), batch.strip(), email.strip()))
+            conn.commit()
+            student_id = cursor.lastrowid
+            conn.close()
+            return True, student_id
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False, "Student Index already exists."
+        except Exception as e:
+            conn.close()
+            return False, str(e)
+
+    def delete_master_student(self, student_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM master_students WHERE id = ?", (student_id,))
+        conn.commit()
+        conn.close()
+        return True
+
+    def generate_roster_xml(self, batch="batch_2016_1"):
+        students = self.get_all_master_students(batch)
+        
+        nsbm = ET.Element("nsbm")
+        students_elem = ET.SubElement(nsbm, "students")
+        batches_elem = ET.SubElement(students_elem, "batches")
+        batch_elem = ET.SubElement(batches_elem, batch)
+
+        for s in students:
+            student_elem = ET.SubElement(batch_elem, "student")
+            idx_elem = ET.SubElement(student_elem, "index")
+            idx_elem.text = s["student_index"]
+            name_elem = ET.SubElement(student_elem, "name")
+            name_elem.text = s["student_name"]
+
+        raw_str = ET.tostring(nsbm, encoding="utf-8")
+        parsed = minidom.parseString(raw_str)
+        return parsed.toprettyxml(indent="    ")
+
     # ===== AUTO-GENERATED DATABASE METHODS =====
 
     def get_record(self, record_id):
@@ -396,58 +444,10 @@ class DatabaseManager:
             FROM attendance_records 
             ORDER BY student_index ASC
         """)
->>>>>>> df323ea2de518a15290d644315f979396912730a
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
 
-<<<<<<< HEAD
-    def add_master_student(self, student_index, student_name, batch="batch_2016_1", email=""):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                INSERT INTO master_students (student_index, student_name, batch, email)
-                VALUES (?, ?, ?, ?)
-            """, (student_index.strip(), student_name.strip(), batch.strip(), email.strip()))
-            conn.commit()
-            student_id = cursor.lastrowid
-            conn.close()
-            return True, student_id
-        except sqlite3.IntegrityError:
-            conn.close()
-            return False, "Student Index already exists."
-        except Exception as e:
-            conn.close()
-            return False, str(e)
-
-    def delete_master_student(self, student_id):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM master_students WHERE id = ?", (student_id,))
-        conn.commit()
-        conn.close()
-        return True
-
-    def generate_roster_xml(self, batch="batch_2016_1"):
-        students = self.get_all_master_students(batch)
-        
-        nsbm = ET.Element("nsbm")
-        students_elem = ET.SubElement(nsbm, "students")
-        batches_elem = ET.SubElement(students_elem, "batches")
-        batch_elem = ET.SubElement(batches_elem, batch)
-
-        for s in students:
-            student_elem = ET.SubElement(batch_elem, "student")
-            idx_elem = ET.SubElement(student_elem, "index")
-            idx_elem.text = s["student_index"]
-            name_elem = ET.SubElement(student_elem, "name")
-            name_elem.text = s["student_name"]
-
-        raw_str = ET.tostring(nsbm, encoding="utf-8")
-        parsed = minidom.parseString(raw_str)
-        return parsed.toprettyxml(indent="    ")
-=======
     def get_student_attendance_history(self, student_index):
         """Get attendance history for a specific student"""
         conn = self.get_connection()
@@ -491,4 +491,4 @@ class DatabaseManager:
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
->>>>>>> df323ea2de518a15290d644315f979396912730a
+

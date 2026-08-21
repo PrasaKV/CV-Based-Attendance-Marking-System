@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 import xml.etree.ElementTree as ET
 import json
 import io
@@ -14,7 +15,10 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
 class CVEngine:
-    """Enhanced Computer Vision Engine (v2.0) with Face Detection & Multi-format Export Generators"""
+    """Enhanced Computer Vision Engine (v2.1) with Auto-Deskew, Morphological Table Line
+    Suppression, Multi-format Roster Parsing (XML, JSON, CSV, XLSX), Face Detection, and
+    Confidence Scoring.
+    """
 
     def __init__(self, upload_folder, config=None):
         self.upload_folder = upload_folder
@@ -30,8 +34,12 @@ class CVEngine:
         except Exception as e:
             print(f"[CVEngine] Face cascade initialization warning: {e}")
 
+    # =========================================================================
+    # Multi-Format Roster Parsers (XML, JSON, CSV, XLSX)
+    # =========================================================================
+
     def parse_student_file(self, file_path):
-        """Parse student index and name from XML or JSON files"""
+        """Parse student index and name from XML, JSON, CSV, or Excel files"""
         students = []
         ext = os.path.splitext(file_path)[1].lower()
 
@@ -39,10 +47,15 @@ class CVEngine:
             students = self._parse_xml(file_path)
         elif ext == ".json":
             students = self._parse_json(file_path)
+        elif ext == ".csv":
+            students = self._parse_csv(file_path)
+        elif ext in [".xlsx", ".xls"]:
+            students = self._parse_excel(file_path)
 
         return students
 
     def _parse_xml(self, xml_file):
+        """Parse student records from structured or raw XML roster"""
         students = []
         try:
             tree = ET.parse(xml_file)
@@ -85,6 +98,7 @@ class CVEngine:
         return students
 
     def _parse_json(self, json_file):
+        """Parse student records from JSON roster file"""
         students = []
         try:
             with open(json_file, "r", encoding="utf-8") as f:
@@ -107,6 +121,199 @@ class CVEngine:
 
         return students
 
+    def _parse_csv(self, csv_file):
+        """Parse student records from CSV roster with automatic header detection"""
+        students = []
+        try:
+            with open(csv_file, "r", encoding="utf-8-sig", errors="ignore") as f:
+                # Detect delimiter (comma, tab, semicolon)
+                sample = f.read(2048)
+                f.seek(0)
+                try:
+                    dialect = csv.Sniffer().sniff(sample)
+                    delimiter = dialect.delimiter
+                except Exception:
+                    delimiter = ","
+
+                reader = csv.reader(f, delimiter=delimiter)
+                rows = [row for row in reader if any(cell.strip() for cell in row)]
+
+            if not rows:
+                return []
+
+            # Check if first row contains headers
+            header = [c.strip().lower() for c in rows[0]]
+            idx_col, name_col = -1, -1
+
+            index_aliases = {"index", "index_no", "index_number", "student_index", "id", "reg_no", "regno", "student_id"}
+            name_aliases = {"name", "student_name", "full_name", "fullname", "student"}
+
+            for col_idx, col_name in enumerate(header):
+                cleaned = re.sub(r'[^a-z0-9_]', '', col_name)
+                if idx_col == -1 and cleaned in index_aliases:
+                    idx_col = col_idx
+                elif name_col == -1 and cleaned in name_aliases:
+                    name_col = col_idx
+
+            # Default to column 0 (index) and column 1 (name) if header not recognized
+            data_rows = rows[1:] if (idx_col != -1 or name_col != -1) else rows
+            if idx_col == -1:
+                idx_col = 0
+            if name_col == -1:
+                name_col = 1 if len(rows[0]) > 1 else 0
+
+            for row in data_rows:
+                if len(row) > idx_col:
+                    s_idx = row[idx_col].strip()
+                    s_name = row[name_col].strip() if len(row) > name_col else ""
+                    if s_idx:
+                        students.append({"index": s_idx, "name": s_name})
+
+        except Exception as e:
+            print(f"[CVEngine] CSV Parsing error: {e}")
+
+        return students
+
+    def _parse_excel(self, xlsx_file):
+        """Parse student records from Excel (.xlsx/.xls) roster"""
+        students = []
+        try:
+            wb = openpyxl.load_workbook(xlsx_file, read_only=True, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            wb.close()
+
+            if not rows:
+                return []
+
+            # Filter non-empty rows
+            non_empty_rows = [r for r in rows if any(c is not None and str(c).strip() for c in r)]
+            if not non_empty_rows:
+                return []
+
+            # Find header
+            first_row = [str(c).strip().lower() if c is not None else "" for c in non_empty_rows[0]]
+            idx_col, name_col = -1, -1
+
+            index_aliases = {"index", "index_no", "index_number", "student_index", "id", "reg_no", "regno", "student_id"}
+            name_aliases = {"name", "student_name", "full_name", "fullname", "student"}
+
+            for col_idx, col_val in enumerate(first_row):
+                cleaned = re.sub(r'[^a-z0-9_]', '', col_val)
+                if idx_col == -1 and cleaned in index_aliases:
+                    idx_col = col_idx
+                elif name_col == -1 and cleaned in name_aliases:
+                    name_col = col_idx
+
+            data_rows = non_empty_rows[1:] if (idx_col != -1 or name_col != -1) else non_empty_rows
+            if idx_col == -1:
+                idx_col = 0
+            if name_col == -1:
+                name_col = 1 if len(non_empty_rows[0]) > 1 else 0
+
+            for row in data_rows:
+                if len(row) > idx_col and row[idx_col] is not None:
+                    s_idx = str(row[idx_col]).strip()
+                    s_name = str(row[name_col]).strip() if len(row) > name_col and row[name_col] is not None else ""
+                    if s_idx:
+                        students.append({"index": s_idx, "name": s_name})
+
+        except Exception as e:
+            print(f"[CVEngine] Excel Parsing error: {e}")
+
+        return students
+
+    # =========================================================================
+    # Computer Vision Enhancements (Deskew & Morphological Line Filtering)
+    # =========================================================================
+
+    def _deskew_image(self, image, gray_img):
+        """Detects skew angle in scanned attendance sheets and rotates image to be upright"""
+        try:
+            # Otsu thresholding to get document contours
+            _, thresh = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            coords = np.column_stack(np.where(thresh > 0))
+            if len(coords) < 100:
+                return image, gray_img, 0.0
+
+            angle = cv2.minAreaRect(coords)[-1]
+            if angle < -45:
+                angle = -(90 + angle)
+            elif angle > 45:
+                angle = 90 - angle
+            else:
+                angle = -angle
+
+            # Apply rotation only if tilt is between 0.5 and 20 degrees
+            if 0.5 <= abs(angle) <= 20.0:
+                (h, w) = gray_img.shape[:2]
+                center = (w // 2, h // 2)
+                M = cv2.getRotationMatrix2D(center, angle, 1.0)
+                deskewed_color = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                deskewed_gray = cv2.warpAffine(gray_img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                return deskewed_color, deskewed_gray, round(angle, 2)
+        except Exception as e:
+            print(f"[CVEngine] Deskew notice: {e}")
+
+        return image, gray_img, 0.0
+
+    def _clean_signature_roi(self, thresh_roi):
+        """Morphologically detects and suppresses horizontal/vertical table grid lines
+        and small scanner noise specks from the signature ROI.
+        """
+        roi_h, roi_w = thresh_roi.shape
+        if roi_h < 4 or roi_w < 4:
+            return thresh_roi, int(cv2.countNonZero(thresh_roi))
+
+        # 1. Detect horizontal table border lines
+        horiz_size = max(10, roi_w // 3)
+        horiz_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (horiz_size, 1))
+        horiz_lines = cv2.morphologyEx(thresh_roi, cv2.MORPH_OPEN, horiz_kernel)
+
+        # 2. Detect vertical table border lines
+        vert_size = max(8, roi_h // 2)
+        vert_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vert_size))
+        vert_lines = cv2.morphologyEx(thresh_roi, cv2.MORPH_OPEN, vert_kernel)
+
+        # Combine detected grid lines
+        table_grid = cv2.bitwise_or(horiz_lines, vert_lines)
+
+        # Subtract grid lines from signature ROI
+        cleaned_roi = cv2.subtract(thresh_roi, table_grid)
+
+        # 3. Filter out isolated noise specks (< 2x2)
+        noise_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        cleaned_roi = cv2.morphologyEx(cleaned_roi, cv2.MORPH_OPEN, noise_kernel)
+
+        stroke_pixels = int(cv2.countNonZero(cleaned_roi))
+        return cleaned_roi, stroke_pixels
+
+    def _calculate_confidence(self, stroke_pixels, total_roi_pixels, threshold):
+        """Calculates stroke density and confidence level for attendance marking"""
+        if total_roi_pixels <= 0:
+            return "Absent", 0.0, "Low"
+
+        density = round((stroke_pixels / total_roi_pixels) * 100, 2)
+
+        if stroke_pixels >= threshold * 2:
+            confidence = "High"
+            status = "Present"
+        elif stroke_pixels >= threshold:
+            confidence = "Medium"
+            status = "Present"
+        elif stroke_pixels >= threshold * 0.5:
+            confidence = "Low"
+            status = "Absent"
+        else:
+            confidence = "High"
+            status = "Absent"
+
+        return status, density, confidence
+
+    # =========================================================================
+    # Main Attendance Processing & Analysis Pipeline
+    # =========================================================================
+
     def process_and_analyze(
         self,
         image_path,
@@ -117,7 +324,9 @@ class CVEngine:
         pixel_threshold=100,
         use_otsu=False
     ):
-        """Processes attendance sheet image, performs ROI thresholding, detects faces, crops signatures, and generates annotated image"""
+        """Processes attendance sheet image with deskewing, ROI thresholding,
+        morphological grid line suppression, signature cropping, and confidence scoring.
+        """
         img = cv2.imread(image_path)
         if img is None:
             raise ValueError(f"Unable to load image at: {image_path}")
@@ -132,12 +341,15 @@ class CVEngine:
         # 1. Grayscale Conversion
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+        # 2. Document Auto-Deskew
+        img, gray, skew_angle = self._deskew_image(img, gray)
+
         # Save Grayscale Image
         gray_filename = f"gray_{session_prefix}_{filename}"
         gray_path = os.path.join(self.upload_folder, gray_filename)
         cv2.imwrite(gray_path, gray)
 
-        # 2. Face Detection
+        # 3. Face Detection
         faces = []
         if self.face_cascade is not None:
             try:
@@ -147,7 +359,7 @@ class CVEngine:
         
         faces_detected = len(faces)
 
-        # 3. Preprocessing & Binarization
+        # 4. Preprocessing & Binarization
         blur = cv2.medianBlur(gray, 5)
 
         if use_otsu:
@@ -160,7 +372,7 @@ class CVEngine:
         thresh_path = os.path.join(self.upload_folder, thresh_filename)
         cv2.imwrite(thresh_path, thresh)
 
-        # 4. Draw bounding boxes on annotated image
+        # 5. Draw bounding boxes on annotated image
         annotated_img = img.copy()
 
         # Draw detected faces with cyan boxes
@@ -178,13 +390,17 @@ class CVEngine:
             x_sig_start = int(width * signature_ratio)
             x_sig_end = width
 
-            # Signature ROI
-            sig_roi = thresh[y_start:y_end, x_sig_start:x_sig_end]
-            non_zero_pixels = int(cv2.countNonZero(sig_roi))
+            # Raw Signature ROI
+            raw_sig_roi = thresh[y_start:y_end, x_sig_start:x_sig_end]
+            roi_total_pixels = (y_end - y_start) * (x_sig_end - x_sig_start)
 
-            status = "Present" if non_zero_pixels >= pixel_threshold else "Absent"
+            # Morphological Grid Line & Noise Suppression
+            cleaned_roi, clean_pixels = self._clean_signature_roi(raw_sig_roi)
 
-            # Crop individual signature image
+            # Evaluate Status & Confidence
+            status, density, confidence = self._calculate_confidence(clean_pixels, roi_total_pixels, pixel_threshold)
+
+            # Crop individual signature image from original color sheet
             orig_crop = img[y_start:y_end, x_sig_start:x_sig_end]
             safe_index = re.sub(r'[^a-zA-Z0-9]', '_', student['index'])
             crop_filename = f"crop_{session_prefix}_{safe_index}.png"
@@ -197,13 +413,13 @@ class CVEngine:
             cv2.rectangle(annotated_img, (0, y_start), (width, y_end), (200, 200, 200), 1)
             cv2.rectangle(annotated_img, (x_sig_start, y_start), (x_sig_end - 2, y_end - 2), color, 2)
 
-            label_text = f"{student['index']}: {status} ({non_zero_pixels}px)"
+            label_text = f"{student['index']}: {status} ({clean_pixels}px - {confidence})"
             cv2.putText(
                 annotated_img,
                 label_text,
                 (x_sig_start + 8, y_start + max(20, row_height // 2)),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
+                0.50,
                 color,
                 2,
                 cv2.LINE_AA
@@ -213,7 +429,9 @@ class CVEngine:
                 "index": student["index"],
                 "name": student["name"],
                 "status": status,
-                "pixel_count": non_zero_pixels,
+                "pixel_count": clean_pixels,
+                "density_percentage": density,
+                "confidence": confidence,
                 "crop_image": f"uploads/{crop_filename}"
             })
 
@@ -231,7 +449,10 @@ class CVEngine:
 
         return step_images, results, faces_detected
 
-    # --- PDF & Excel Export Generators ---
+    # =========================================================================
+    # PDF & Excel Export Generators
+    # =========================================================================
+
     def generate_pdf_report(self, session, records):
         """Generates a styled PDF report for an attendance session"""
         buffer = io.BytesIO()
